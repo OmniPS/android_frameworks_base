@@ -103,6 +103,7 @@ class GlobalScreenrecord {
     private WindowManager mWindowManager;
 
     private String mNotifContent = null;
+    private boolean mHintShowing = false;
 
     private void setFinisher(Runnable finisher) {
         mFinisher = finisher;
@@ -230,8 +231,8 @@ class GlobalScreenrecord {
         mCaptureThread.setMode(mode);
         mCaptureThread.start();
 
-        updateNotification(mode);
         showHint();
+        updateNotification(mode);
     }
 
     public void updateNotification(int mode) {
@@ -297,6 +298,7 @@ class GlobalScreenrecord {
     }
 
     private void showHint() {
+        mHintShowing = true;
         final int size = (int) (mContext.getResources()
                 .getDimensionPixelSize(R.dimen.screenrecord_hint_size));
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
@@ -326,12 +328,29 @@ class GlobalScreenrecord {
             }
         });
 
+        hint.startAnimation(getHintAnimation());
+    }
+
+    public void toggleHint() {
+        mHintShowing = !mHintShowing;
+        final ImageView hint = (ImageView) mFrameLayout.findViewById(R.id.hint);
+        if (mHintShowing) {
+            hint.setImageAlpha(255);
+            hint.startAnimation(getHintAnimation());
+        } else  {
+            hint.setImageAlpha(0);
+            hint.setAnimation(null);
+        }
+        updateNotification(-1);
+    }
+
+    private Animation getHintAnimation() {
         Animation anim = new AlphaAnimation(0.0f, 1.0f);
         anim.setDuration(500);
         anim.setStartOffset(100);
         anim.setRepeatMode(Animation.REVERSE);
         anim.setRepeatCount(Animation.INFINITE);
-        hint.startAnimation(anim);
+        return anim;
     }
 
     /**
