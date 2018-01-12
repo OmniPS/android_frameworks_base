@@ -103,7 +103,6 @@ class GlobalScreenrecord {
     private WindowManager mWindowManager;
 
     private String mNotifContent = null;
-    private boolean mHintShowing = false;
 
     private void setFinisher(Runnable finisher) {
         mFinisher = finisher;
@@ -231,8 +230,8 @@ class GlobalScreenrecord {
         mCaptureThread.setMode(mode);
         mCaptureThread.start();
 
-        showHint();
         updateNotification(mode);
+        showHint();
     }
 
     public void updateNotification(int mode) {
@@ -298,7 +297,6 @@ class GlobalScreenrecord {
     }
 
     private void showHint() {
-        mHintShowing = true;
         final int size = (int) (mContext.getResources()
                 .getDimensionPixelSize(R.dimen.screenrecord_hint_size));
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
@@ -328,29 +326,12 @@ class GlobalScreenrecord {
             }
         });
 
-        hint.startAnimation(getHintAnimation());
-    }
-
-    public void toggleHint() {
-        mHintShowing = !mHintShowing;
-        final ImageView hint = (ImageView) mFrameLayout.findViewById(R.id.hint);
-        if (mHintShowing) {
-            hint.setImageAlpha(255);
-            hint.startAnimation(getHintAnimation());
-        } else  {
-            hint.setImageAlpha(0);
-            hint.setAnimation(null);
-        }
-        updateNotification(-1);
-    }
-
-    private Animation getHintAnimation() {
         Animation anim = new AlphaAnimation(0.0f, 1.0f);
         anim.setDuration(500);
         anim.setStartOffset(100);
         anim.setRepeatMode(Animation.REVERSE);
         anim.setRepeatCount(Animation.INFINITE);
-        return anim;
+        hint.startAnimation(anim);
     }
 
     /**
@@ -414,11 +395,15 @@ class GlobalScreenrecord {
             }
 
             // Make it appear in gallery, run MediaScanner
-            // also make sure to tell media scanner that the tmp file got deleted
-            MediaScannerConnectionClient client =
-                    new MediaScanner(mContext);
-            ((MediaScanner)client).connectAndScan(input.getAbsolutePath(), null);
-            ((MediaScanner)client).connectAndScan(output.getAbsolutePath(), date);
+            // also make sure to tell media scammer that the tmp file got deleted
+            MediaScannerConnection.scanFile(mContext,
+                new String[] { output.getAbsolutePath(), input.getAbsolutePath() }, null,
+                new MediaScannerConnection.OnScanCompletedListener() {
+                public void onScanCompleted(String path, Uri uri) {
+                    Log.i(TAG, "MediaScanner done scanning " + path);
+                    mFinisher.run();
+                }
+            });
         } }, 2000);
     }
 
