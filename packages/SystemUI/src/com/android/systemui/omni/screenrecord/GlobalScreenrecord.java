@@ -414,15 +414,11 @@ class GlobalScreenrecord {
             }
 
             // Make it appear in gallery, run MediaScanner
-            // also make sure to tell media scammer that the tmp file got deleted
-            MediaScannerConnection.scanFile(mContext,
-                new String[] { output.getAbsolutePath(), input.getAbsolutePath() }, null,
-                new MediaScannerConnection.OnScanCompletedListener() {
-                public void onScanCompleted(String path, Uri uri) {
-                    Log.i(TAG, "MediaScanner done scanning " + path);
-                    mFinisher.run();
-                }
-            });
+            // also make sure to tell media scanner that the tmp file got deleted
+            MediaScannerConnectionClient client =
+                    new MediaScanner(mContext);
+            ((MediaScanner)client).connectAndScan(input.getAbsolutePath(), null);
+            ((MediaScanner)client).connectAndScan(output.getAbsolutePath(), date);
         } }, 2000);
     }
 
