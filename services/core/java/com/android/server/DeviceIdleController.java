@@ -1921,7 +1921,7 @@ public class DeviceIdleController extends SystemService
                 mLightState = LIGHT_STATE_INACTIVE;
                 if (DEBUG) Slog.d(TAG, "Moved from LIGHT_STATE_ACTIVE to LIGHT_STATE_INACTIVE");
                 resetLightIdleManagementLocked();
-                scheduleLightAlarmLocked(mConstants.LIGHT_IDLE_AFTER_INACTIVE_TIMEOUT);
+                scheduleLightAlarmLocked(mConstants.LIGHT_IDLE_AFTER_INACTIVE_TIMEOUT, false);
                 EventLogTags.writeDeviceIdleLight(mLightState, "no activity");
             }
         }
@@ -1972,7 +1972,7 @@ public class DeviceIdleController extends SystemService
                     // before going in to our first idle.
                     mLightState = LIGHT_STATE_PRE_IDLE;
                     EventLogTags.writeDeviceIdleLight(mLightState, reason);
-                    scheduleLightAlarmLocked(mConstants.LIGHT_PRE_IDLE_TIMEOUT);
+                    scheduleLightAlarmLocked(mConstants.LIGHT_PRE_IDLE_TIMEOUT,false);
                     break;
                 }
                 // Nothing active, fall through to immediately idle.
@@ -1989,7 +1989,7 @@ public class DeviceIdleController extends SystemService
                     }
                 }
                 mMaintenanceStartTime = 0;
-                scheduleLightAlarmLocked(mNextLightIdleDelay);
+                scheduleLightAlarmLocked(mNextLightIdleDelay,true);
                 mNextLightIdleDelay = Math.min(mConstants.LIGHT_MAX_IDLE_TIMEOUT,
                         (long)(mNextLightIdleDelay * mConstants.LIGHT_IDLE_FACTOR));
                 if (mNextLightIdleDelay < mConstants.LIGHT_IDLE_TIMEOUT) {
@@ -2014,7 +2014,7 @@ public class DeviceIdleController extends SystemService
                     } else if (mCurIdleBudget > mConstants.LIGHT_IDLE_MAINTENANCE_MAX_BUDGET) {
                         mCurIdleBudget = mConstants.LIGHT_IDLE_MAINTENANCE_MAX_BUDGET;
                     }
-                    scheduleLightAlarmLocked(mCurIdleBudget);
+                    scheduleLightAlarmLocked(mCurIdleBudget,false);
                     if (DEBUG) Slog.d(TAG,
                             "Moved from LIGHT_STATE_IDLE to LIGHT_STATE_IDLE_MAINTENANCE.");
                     mLightState = LIGHT_STATE_IDLE_MAINTENANCE;
@@ -2025,7 +2025,7 @@ public class DeviceIdleController extends SystemService
                     // We'd like to do maintenance, but currently don't have network
                     // connectivity...  let's try to wait until the network comes back.
                     // We'll only wait for another full idle period, however, and then give up.
-                    scheduleLightAlarmLocked(mNextLightIdleDelay);
+                    scheduleLightAlarmLocked(mNextLightIdleDelay,true);
                     if (DEBUG) Slog.d(TAG, "Moved to LIGHT_WAITING_FOR_NETWORK.");
                     mLightState = LIGHT_STATE_WAITING_FOR_NETWORK;
                     EventLogTags.writeDeviceIdleLight(mLightState, reason);
@@ -2304,7 +2304,7 @@ public class DeviceIdleController extends SystemService
     void startMonitoringMotionLocked() {
         if (DEBUG) Slog.d(TAG, "startMonitoringMotionLocked()");
         if (mMotionSensor != null && !mMotionListener.active) {
-            mMotionListener.registerLocked();
+            //mMotionListener.registerLocked();
         }
     }
 
@@ -2363,11 +2363,18 @@ public class DeviceIdleController extends SystemService
         }
     }
 
-    void scheduleLightAlarmLocked(long delay) {
+    void scheduleLightAlarmLocked(long delay, boolean idleUntil) {
         if (DEBUG) Slog.d(TAG, "scheduleLightAlarmLocked(" + delay + ")");
         mNextLightAlarmTime = SystemClock.elapsedRealtime() + delay;
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                mNextLightAlarmTime, "DeviceIdleController.light", mLightAlarmListener, mHandler);
+
+        if (idleUntil) {
+            mAlarmManager.setIdleUntil(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    mNextLightAlarmTime, "DeviceIdleController.light", mLightAlarmListener, mHandler);
+        } else {
+            mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    mNextLightAlarmTime, "DeviceIdleController.light", mLightAlarmListener, mHandler);
+        }
+
     }
 
     void scheduleSensingTimeoutAlarmLocked(long delay) {
