@@ -1275,10 +1275,12 @@ public final class PowerManagerService extends SystemService
 
     protected void notifyWakeLockAcquiredLocked(WakeLock wakeLock) {
         if (mSystemReady && !wakeLock.mDisabled) {
-            wakeLock.mNotifiedAcquired = true;
-            mNotifier.onWakeLockAcquired(wakeLock.mFlags, wakeLock.mTag, wakeLock.mPackageName,
-                    wakeLock.mOwnerUid, wakeLock.mOwnerPid, wakeLock.mWorkSource,
-                    wakeLock.mHistoryTag);
+	    if( !wakeLock.mNotifiedAcquired ) {
+                wakeLock.mNotifiedAcquired = true;
+                mNotifier.onWakeLockAcquired(wakeLock.mFlags, wakeLock.mTag, wakeLock.mPackageName,
+                        wakeLock.mOwnerUid, wakeLock.mOwnerPid, wakeLock.mWorkSource,
+                        wakeLock.mHistoryTag);
+	    }
             restartNofifyLongTimerLocked(wakeLock);
         }
     }
@@ -1291,18 +1293,22 @@ public final class PowerManagerService extends SystemService
     }
 
     private void restartNofifyLongTimerLocked(WakeLock wakeLock) {
-        wakeLock.mAcquireTime = SystemClock.uptimeMillis();
-        if ((wakeLock.mFlags & PowerManager.WAKE_LOCK_LEVEL_MASK)
-                == PowerManager.PARTIAL_WAKE_LOCK && mNotifyLongScheduled == 0) {
-            enqueueNotifyLongMsgLocked(wakeLock.mAcquireTime + MIN_LONG_WAKE_CHECK_INTERVAL);
-        }
+	if(  wakeLock.mNotifiedAcquired ) {
+            wakeLock.mAcquireTime = SystemClock.uptimeMillis();
+            if ((wakeLock.mFlags & PowerManager.WAKE_LOCK_LEVEL_MASK)
+                    == PowerManager.PARTIAL_WAKE_LOCK && mNotifyLongScheduled == 0) {
+                enqueueNotifyLongMsgLocked(wakeLock.mAcquireTime + MIN_LONG_WAKE_CHECK_INTERVAL);
+            }
+	}
     }
 
     private void notifyWakeLockLongStartedLocked(WakeLock wakeLock) {
         if (mSystemReady && !wakeLock.mDisabled) {
-            wakeLock.mNotifiedLong = true;
-            mNotifier.onLongPartialWakeLockStart(wakeLock.mTag, wakeLock.mOwnerUid,
+	    if(  wakeLock.mNotifiedAcquired ) {
+                wakeLock.mNotifiedLong = true;
+                mNotifier.onLongPartialWakeLockStart(wakeLock.mTag, wakeLock.mOwnerUid,
                     wakeLock.mWorkSource, wakeLock.mHistoryTag);
+	    }
         }
     }
 
@@ -3045,6 +3051,9 @@ public final class PowerManagerService extends SystemService
                 == PowerManager.PARTIAL_WAKE_LOCK) {
             boolean disabled = false;
             final int appid = UserHandle.getAppId(wakeLock.mOwnerUid);
+	    if (wakeLock.mWorkSource != null && wakeLock.mWorkSource.size() > 0 ) {
+		appid = wakeLock.mWorkSource.get(0);
+	    }
             if (appid >= Process.FIRST_APPLICATION_UID) {
                 // Cached inactive processes are never allowed to hold wake locks.
                 if (mConstants.NO_CACHED_WAKE_LOCKS) {
@@ -3053,14 +3062,15 @@ public final class PowerManagerService extends SystemService
                                     != ActivityManager.PROCESS_STATE_NONEXISTENT &&
                             wakeLock.mUidState.mProcState > ActivityManager.PROCESS_STATE_RECEIVER;
                 }
-                if (mDeviceIdleMode) {
+                if (/*mDeviceIdleMode*/ mWakefulness != WAKEFULNESS_AWAKE ) {
                     // If we are in idle mode, we will also ignore all partial wake locks that are
                     // for application uids that are not whitelisted.
                     final UidState state = wakeLock.mUidState;
                     if (Arrays.binarySearch(mDeviceIdleWhitelist, appid) < 0 &&
                             Arrays.binarySearch(mDeviceIdleTempWhitelist, appid) < 0 &&
-                            state.mProcState != ActivityManager.PROCESS_STATE_NONEXISTENT &&
-                            state.mProcState > ActivityManager.PROCESS_STATE_FOREGROUND_SERVICE) {
+			    appid >= Process.FIRST_APPLICATION_UID ) {
+                            /*state.mProcState != ActivityManager.PROCESS_STATE_NONEXISTENT &&
+                            state.mProcState > ActivityManager.PROCESS_STATE_FOREGROUND_SERVICE) { */
                         disabled = true;
                     }
                 }
