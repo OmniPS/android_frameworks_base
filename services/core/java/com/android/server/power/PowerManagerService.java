@@ -120,8 +120,8 @@ public final class PowerManagerService extends SystemService
         implements Watchdog.Monitor {
     private static final String TAG = "PowerManagerService";
 
-    private static final boolean DEBUG = false;
-    private static final boolean DEBUG_SPEW = DEBUG && true;
+    private static final boolean DEBUG = true;
+    private static final boolean DEBUG_SPEW = DEBUG && false;
 
     // Message: Sent when a user activity timeout occurs to update the power state.
     private static final int MSG_USER_ACTIVITY_TIMEOUT = 1;
@@ -1901,7 +1901,7 @@ public final class PowerManagerService extends SystemService
                         mWakeLockSummary |= WAKE_LOCK_SCREEN_DIM;
                         break;
                     case PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK:
-                        mWakeLockSummary |= WAKE_LOCK_PROXIMITY_SCREEN_OFF;
+                        mWakeLockSummary |= WAKE_LOCK_PROXIMITY_SCREEN_OFF | WAKE_LOCK_CPU;
                         break;
                     case PowerManager.DOZE_WAKE_LOCK:
                         mWakeLockSummary |= WAKE_LOCK_DOZE;
@@ -3108,7 +3108,7 @@ public final class PowerManagerService extends SystemService
                                     != ActivityManager.PROCESS_STATE_NONEXISTENT &&
                             wakeLock.mUidState.mProcState > ActivityManager.PROCESS_STATE_RECEIVER;
                     }
-                    if (/*mDeviceIdleMode*/ !disabled && mWakefulness != WAKEFULNESS_AWAKE ) {
+                    if (/*mDeviceIdleMode*/ !disabled /*&& mWakefulness != WAKEFULNESS_AWAKE */) {
                     // If we are in idle mode, we will also ignore all partial wake locks that are
                     // for application uids that are not whitelisted.
                         final UidState state = wakeLock.mUidState;
