@@ -509,6 +509,7 @@ class GlobalScreenrecord {
                 r.getString(com.android.internal.R.string.share), shareAction)
             .addAction(R.drawable.ic_screenshot_delete,
                 r.getString(com.android.internal.R.string.delete), deleteAction);
+
         Notification notif = builder.build();
         mNotificationManager.notify(SCREENRECORD_NOTIFICATION_ID, notif);
 

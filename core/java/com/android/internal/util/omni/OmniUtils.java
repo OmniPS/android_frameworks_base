@@ -23,6 +23,7 @@ import android.os.UserHandle;
 import android.hardware.input.InputManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.view.InputDevice;
