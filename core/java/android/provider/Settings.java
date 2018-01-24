@@ -4293,6 +4293,11 @@ public final class Settings {
         public static final String STATUS_BAR_CUSTOM_HEADER_IMAGE = "status_bar_custom_header_image";
 
         /**
+         * @hide
+         */
+        public static final String STATUS_BAR_FILE_HEADER_IMAGE = "status_bar_file_header_image";
+
+        /**
         * Whether to show media art on lockscreen
         * @hide
         */
@@ -10758,6 +10763,18 @@ public final class Settings {
          * @hide
          */
         public static final String DEVICE_IDLE_CONSTANTS_USER = "device_idle_constants_user";
+
+        /**
+         * Defines the screen-off animation to display
+         * @hide
+         */
+        public static final String SCREEN_OFF_ANIMATION = "screen_off_animation";
+
+        /**
+         * Whether to show a screen-on animation
+         * @hide
+         */
+        public static final String SCREEN_ON_ANIMATION = "screen_on_animation";
 
         /**
          * Flag to enable use of RefactoredBackupManagerService.
