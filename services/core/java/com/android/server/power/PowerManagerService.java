@@ -120,7 +120,7 @@ public final class PowerManagerService extends SystemService
         implements Watchdog.Monitor {
     private static final String TAG = "PowerManagerService";
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private static final boolean DEBUG_SPEW = DEBUG && false;
 
     // Message: Sent when a user activity timeout occurs to update the power state.
@@ -3119,19 +3119,19 @@ public final class PowerManagerService extends SystemService
                             state.mProcState > ActivityManager.PROCESS_STATE_FOREGROUND_SERVICE) { */
                             disabled = true;
                         } else {
-            		    Slog.i(TAG, "WL: whitelisted or system " + wakeLock);
+            		    if( DEBUG ) Slog.i(TAG, "WL: whitelisted or system " + wakeLock);
 			}
                     }
                 }
 	    } else  {
-		Slog.i(TAG, "WL: Non-cpu wakelock " + wakeLock);
+		if( DEBUG ) Slog.i(TAG, "WL: Non-cpu wakelock " + wakeLock);
 	    }
             if (wakeLock.mDisabled != disabled) {
                 wakeLock.mDisabled = disabled;
-		Slog.i(TAG, "WL: changed wakelock state for appid=" + appid + " " + wakeLock + " worksource=" + wakeLock.mWorkSource);
+		if( DEBUG ) Slog.i(TAG, "WL: changed wakelock state for appid=" + appid + " " + wakeLock + " worksource=" + wakeLock.mWorkSource);
                 return true;
             } else {
-		Slog.i(TAG, "WL: check wakelock for appid=" + appid + " " + wakeLock + " worksource=" + wakeLock.mWorkSource);
+		if( DEBUG ) Slog.i(TAG, "WL: check wakelock for appid=" + appid + " " + wakeLock + " worksource=" + wakeLock.mWorkSource);
 	    }
         }
         return false;
