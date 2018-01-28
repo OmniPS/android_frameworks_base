@@ -92,6 +92,7 @@ import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.WorkSource;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.EventLog;
@@ -1825,9 +1826,12 @@ public class LocationManagerService extends ILocationManager.Stub {
     }
 
     private boolean isThrottlingExemptLocked(Identity identity) {
+
         if (identity.mUid == Process.SYSTEM_UID) {
             return true;
         }
+
+	if( SystemProperties.getBoolean("persist.ps.gpsthrottle", false) ) return false;
 
         if (mBackgroundThrottlePackageWhitelist.contains(identity.mPackageName)) {
             return true;
@@ -1838,7 +1842,7 @@ public class LocationManagerService extends ILocationManager.Stub {
                 return true;
             }
         }
-
+        
         return false;
     }
 
