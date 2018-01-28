@@ -106,4 +106,11 @@ public class OmniUtils {
             e.printStackTrace();
         }
     }
+
+    public static void goToSleep(Context context) {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if(pm != null) {
+            pm.goToSleep(SystemClock.uptimeMillis());
+        }
+    }
 }
