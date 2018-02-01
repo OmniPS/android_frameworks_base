@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The CyanogenMod Project
+ * Copyright (C) 2018 The OmniROM Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,8 @@ package com.android.systemui.qs.tiles;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.provider.Settings;
-import android.provider.Settings.Global;
 import android.service.quicksettings.Tile;
 
-import com.android.systemui.qs.GlobalSetting;
 import com.android.systemui.qs.QSHost;
 import com.android.systemui.qs.tileimpl.QSTileImpl;
 import com.android.systemui.plugins.qs.QSTile.BooleanState;
@@ -30,21 +28,21 @@ import com.android.systemui.R;
 
 import com.android.internal.logging.nano.MetricsProto.MetricsEvent;
 
-/** Quick settings tile: Heads up **/
-public class HeadsUpTile extends QSTileImpl<BooleanState> {
+public class KeyDisableTile extends QSTileImpl<BooleanState> {
+    private boolean mKeysDisabled;
+    private final Icon mIcon = ResourceIcon.get(R.drawable.ic_qs_key_disable_on);
 
-    private final GlobalSetting mSetting;
-    private final Icon mIcon = ResourceIcon.get(R.drawable.ic_qs_heads_up_on);
-
-    public HeadsUpTile(QSHost host) {
+    public KeyDisableTile(QSHost host) {
         super(host);
+        mKeysDisabled = Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.HARDWARE_KEYS_DISABLE, 0) == 1;
+    }
 
-        mSetting = new GlobalSetting(mContext, mHandler, Global.HEADS_UP_NOTIFICATIONS_ENABLED) {
-            @Override
-            protected void handleValueChanged(int value) {
-                handleRefreshState(value);
-            }
-        };
+    @Override
+    public boolean isAvailable() {
+        final int deviceKeys = mContext.getResources().getInteger(
+                com.android.internal.R.integer.config_deviceHardwareKeys);
+        return deviceKeys != 0;
     }
 
     @Override
@@ -54,7 +52,10 @@ public class HeadsUpTile extends QSTileImpl<BooleanState> {
 
     @Override
     public void handleClick() {
-        setEnabled(!mState.value);
+        mKeysDisabled = !mKeysDisabled;
+        Settings.System.putInt(mContext.getContentResolver(),
+                Settings.System.HARDWARE_KEYS_DISABLE,
+                mKeysDisabled ? 1 : 0);
         refreshState();
     }
 
@@ -65,45 +66,26 @@ public class HeadsUpTile extends QSTileImpl<BooleanState> {
 
     @Override
     public CharSequence getTileLabel() {
-        return mContext.getString(R.string.quick_settings_heads_up_label);
-    }
-
-    private void setEnabled(boolean enabled) {
-        Settings.Global.putInt(mContext.getContentResolver(),
-                Settings.Global.HEADS_UP_NOTIFICATIONS_ENABLED,
-                enabled ? 1 : 0);
+        return mContext.getString(R.string.quick_settings_key_disable_label);
     }
 
     @Override
     protected void handleUpdateState(BooleanState state, Object arg) {
-        final int value = arg instanceof Integer ? (Integer)arg : mSetting.getValue();
-        final boolean headsUp = value != 0;
         if (state.slash == null) {
             state.slash = new SlashState();
         }
         state.icon = mIcon;
-        state.value = headsUp;
-        state.slash.isSlashed = !state.value;
-        state.label = mContext.getString(R.string.quick_settings_heads_up_label);
-        if (headsUp) {
+        state.value = mKeysDisabled;
+        state.slash.isSlashed = state.value;
+        state.label = mContext.getString(R.string.quick_settings_key_disable_label);
+        if (mKeysDisabled) {
             state.contentDescription =  mContext.getString(
-                    R.string.accessibility_quick_settings_heads_up_on);
+                    R.string.accessibility_quick_settings_key_disable_on);
             state.state = Tile.STATE_ACTIVE;
         } else {
             state.contentDescription =  mContext.getString(
-                    R.string.accessibility_quick_settings_heads_up_off);
+                    R.string.accessibility_quick_settings_key_disable_off);
             state.state = Tile.STATE_INACTIVE;
-        }
-    }
-
-    @Override
-    protected String composeChangeAnnouncement() {
-        if (mState.value) {
-            return mContext.getString(
-                    R.string.accessibility_quick_settings_heads_up_changed_on);
-        } else {
-            return mContext.getString(
-                    R.string.accessibility_quick_settings_heads_up_changed_off);
         }
     }
 
