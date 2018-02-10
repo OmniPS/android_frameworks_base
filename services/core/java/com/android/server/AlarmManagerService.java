@@ -100,14 +100,14 @@ class AlarmManagerService extends SystemService {
     static final int TYPE_NONWAKEUP_MASK = 0x1; // low bit => non-wakeup
 
     static final String TAG = "AlarmManager";
-    static final boolean localLOGV = false;
+    static final boolean localLOGV = true;
     static final boolean DEBUG_BATCH = localLOGV || false;
     static final boolean DEBUG_VALIDATE = localLOGV || false;
     static final boolean DEBUG_ALARM_CLOCK = localLOGV || false;
     static final boolean DEBUG_LISTENER_CALLBACK = localLOGV || false;
     static final boolean DEBUG_WAKELOCK = localLOGV || false;
     static final boolean RECORD_ALARMS_IN_HISTORY = true;
-    static final boolean RECORD_DEVICE_IDLE_ALARMS = false;
+    static final boolean RECORD_DEVICE_IDLE_ALARMS = true;
     static final int ALARM_EVENT = 1;
     static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -115,7 +115,7 @@ class AlarmManagerService extends SystemService {
             = new Intent().addFlags(Intent.FLAG_FROM_BACKGROUND);
     static final IncreasingTimeOrder sIncreasingTimeOrder = new IncreasingTimeOrder();
     
-    static final boolean WAKEUP_STATS = false;
+    static final boolean WAKEUP_STATS = true;
 
     private static final Intent NEXT_ALARM_CLOCK_CHANGED_INTENT =
             new Intent(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)
@@ -1174,7 +1174,7 @@ class AlarmManagerService extends SystemService {
             blockTag = callingPackage + ":" + operation.getTag("");
 	}
 
-	Slog.e(TAG, "Alarm: type=" + type + ", tag=" + blockTag + ", " + flags + ", alarmClock=" + alarmClock + ", ws=" + workSource );
+	Slog.e(TAG, "Alarm: type=" + type + ", pkg=" + callingPackage + ", uid=" + callingUid + ", tag=" + blockTag + ", " + flags + ", alarmClock=" + alarmClock + ", ws=" + workSource );
 
         if (operation != mTimeTickSender && alarmClock == null && ( type == AlarmManager.RTC_WAKEUP || type == AlarmManager.ELAPSED_REALTIME_WAKEUP ) ) {
 
