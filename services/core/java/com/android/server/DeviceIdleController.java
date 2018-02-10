@@ -803,8 +803,8 @@ public class DeviceIdleController extends SystemService
                     Slog.e(TAG, "Bad device idle settings", e);
                 }
 
-                LIGHT_IDLE_AFTER_INACTIVE_TIMEOUT = 5L;
-                LIGHT_PRE_IDLE_TIMEOUT = 5L;
+                LIGHT_IDLE_AFTER_INACTIVE_TIMEOUT = 250L;
+                LIGHT_PRE_IDLE_TIMEOUT = 250L;
                 LIGHT_IDLE_TIMEOUT = 30*60*1000L;
                 LIGHT_IDLE_FACTOR = 1.0F;
                 LIGHT_MAX_IDLE_TIMEOUT = 30*60*1000L;
@@ -817,11 +817,11 @@ public class DeviceIdleController extends SystemService
                 LOCATING_TIMEOUT = 0L;
                 LOCATION_ACCURACY = 100;
                 MOTION_INACTIVE_TIMEOUT = 0L;
-                IDLE_AFTER_INACTIVE_TIMEOUT = 360*60*1000L;
+                IDLE_AFTER_INACTIVE_TIMEOUT = 1000L;
                 IDLE_PENDING_TIMEOUT = 3000L;
-                MAX_IDLE_PENDING_TIMEOUT = 3000L;
+                MAX_IDLE_PENDING_TIMEOUT = 30000L;
                 IDLE_PENDING_FACTOR = 1.0F;
-                IDLE_TIMEOUT = 3*60*60*1000L;
+                IDLE_TIMEOUT = 1*60*60*1000L;
                 MAX_IDLE_TIMEOUT = 12*60*60*1000L;
                 IDLE_FACTOR = 2.0F;
                 MIN_TIME_TO_ALARM = 0;
@@ -1510,7 +1510,7 @@ public class DeviceIdleController extends SystemService
 
                 mLocalActivityManager.setDeviceIdleWhitelist(mPowerSaveWhitelistAllAppIdArray);
                 mLocalPowerManager.setDeviceIdleWhitelist(mPowerSaveWhitelistAllAppIdArray);
-                mLocalAlarmManager.setDeviceIdleUserWhitelist(mPowerSaveWhitelistUserAppIdArray);
+                mLocalAlarmManager.setDeviceIdleUserWhitelist(mPowerSaveWhitelistAllAppIdArray);
 
                 updateInteractivityLocked();
             }
@@ -2468,7 +2468,7 @@ public class DeviceIdleController extends SystemService
                 Slog.d(TAG, "Setting alarm whitelist to "
                         + Arrays.toString(mPowerSaveWhitelistUserAppIdArray));
             }
-            mLocalAlarmManager.setDeviceIdleUserWhitelist(mPowerSaveWhitelistUserAppIdArray);
+            mLocalAlarmManager.setDeviceIdleUserWhitelist(mPowerSaveWhitelistAllAppIdArray);
         }
     }
 
