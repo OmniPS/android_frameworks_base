@@ -853,6 +853,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private static final int KEY_ACTION_LAST_APP = 5;
     private static final int KEY_ACTION_SLEEP = 6;
     private static final int KEY_ACTION_APP_SWITCH = 7;
+    private static final int KEY_ACTION_NOTIFICATIONS = 8;
     // Omni additions end
 
     // Fallback actions by key code.
@@ -2358,6 +2359,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 Constructor<?> constructor = klass.getConstructor(Context.class);
                 mDeviceKeyHandler = (DeviceKeyHandler) constructor.newInstance(
                         mContext);
+                mDeviceKeyHandler.setWindowManagerPolicy(this);
                 if(DEBUG) Slog.d(TAG, "Device key handler loaded");
             } catch (Exception e) {
                 Slog.w(TAG, "Could not instantiate device key handler "
@@ -9176,6 +9178,16 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 break;
             case KEY_ACTION_ALL_APPS:
                 launchAllAppsAction();
+                break;
+            case KEY_ACTION_NOTIFICATIONS:
+                IStatusBarService service = getStatusBarService();
+                if (service != null) {
+                    try {
+                        service.expandNotificationsPanel();
+                    } catch (RemoteException e) {
+                        // do nothing.
+                    }
+                }
                 break;
             default:
                 break;

@@ -278,6 +278,7 @@ public class BrightnessController implements ToggleSlider.Listener {
         mContext = context;
         mIcon = icon;
         mControl = control;
+        Dependency.initDependencies(context.getApplicationContext());
         mBackgroundHandler = new Handler((Looper) Dependency.get(Dependency.BG_LOOPER));
         mUserTracker = new CurrentUserTracker(mContext) {
             @Override
@@ -449,6 +450,7 @@ public class BrightnessController implements ToggleSlider.Listener {
                     com.android.systemui.R.drawable.ic_qs_brightness_auto_on :
                     com.android.systemui.R.drawable.ic_qs_brightness_auto_off);
         }
+        mControl.setAutoBrightness(mAutomatic);
     }
 
     private void updateVrMode(boolean isEnabled) {
@@ -456,5 +458,9 @@ public class BrightnessController implements ToggleSlider.Listener {
             mIsVrModeEnabled = isEnabled;
             mBackgroundHandler.post(mUpdateSliderRunnable);
         }
+    }
+
+    public void showSideButtons(boolean enable) {
+        mControl.showSideButtons(enable);
     }
 }
