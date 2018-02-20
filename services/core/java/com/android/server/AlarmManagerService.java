@@ -100,7 +100,7 @@ class AlarmManagerService extends SystemService {
     static final int TYPE_NONWAKEUP_MASK = 0x1; // low bit => non-wakeup
 
     static final String TAG = "AlarmManager";
-    static final boolean localLOGV = true;
+    static final boolean localLOGV = false;
     static final boolean DEBUG_BATCH = localLOGV || false;
     static final boolean DEBUG_VALIDATE = localLOGV || false;
     static final boolean DEBUG_ALARM_CLOCK = localLOGV || false;
@@ -1168,48 +1168,48 @@ class AlarmManagerService extends SystemService {
 
 
         boolean blockAlarm = false;
-	String blockTag = callingPackage + ":" + listenerTag;
+	    String blockTag = callingPackage + ":" + listenerTag;
 	
         if(operation != null) {
             blockTag = callingPackage + ":" + operation.getTag("");
-	}
+	    }   
 
-	Slog.e(TAG, "Alarm: type=" + type + ", pkg=" + callingPackage + ", uid=" + callingUid + ", tag=" + blockTag + ", " + flags + ", alarmClock=" + alarmClock + ", ws=" + workSource );
+	    Slog.e(TAG, "Alarm: type=" + type + ", pkg=" + callingPackage + ", uid=" + callingUid + ", tag=" + blockTag + ", " + flags + ", alarmClock=" + alarmClock + ", ws=" + workSource );
 
         if (operation != mTimeTickSender && alarmClock == null && ( type == AlarmManager.RTC_WAKEUP || type == AlarmManager.ELAPSED_REALTIME_WAKEUP ) ) {
 
             Slog.e(TAG, "RTC Alarm: " + type + " " + blockTag);
 
- 	    int appid = 0;
+ 	        int appid = 0;
 
-	    if( callingPackage != null && callingPackage.equals("com.google.android.deskclock") ) {
-		blockAlarm = false;
-	    } else if( blockTag.contains("com.android.internal.telephony.data") ||
-		blockTag.contains("*sync") ||
-		blockTag.contains("*job") || 
-		blockTag.contains("APPWIDGET_UPDATE")) {
-		    blockAlarm = true;
-	    } else if( blockTag.equals("android:WifiConnectivityManager Restart Scan") ) {
-	   	blockAlarm = true;
-	    } else if( callingPackage != null && callingPackage.startsWith("com.google.android.gms") ) {
-		blockAlarm = true;
-	    } else {
+	        if( callingPackage != null && callingPackage.equals("com.google.android.deskclock") ) {
+		        blockAlarm = false;
+	        } else if( blockTag.contains("com.android.internal.telephony.data") ||
+		        blockTag.contains("*sync") ||
+		        blockTag.contains("*job") || 
+		        blockTag.contains("APPWIDGET_UPDATE")) {
+		            blockAlarm = true;
+	        } else if( blockTag.equals("android:WifiConnectivityManager Restart Scan") ) {
+	   	        blockAlarm = true;
+	        } else if( callingPackage != null && callingPackage.startsWith("com.google.android.gms") ) {
+		        blockAlarm = true;
+	        } else {
 
-		if (workSource != null && workSource.size() > 0 ) {
-                
-		    if( UserHandle.getAppId(workSource.get(0)) >= Process.FIRST_APPLICATION_UID  &&
-			Arrays.binarySearch(mDeviceIdleUserWhitelist, workSource.get(0)) < 0 ) {
-			blockAlarm = true;
-		    }
-		} else {
-		    if( UserHandle.getAppId(callingUid) >= Process.FIRST_APPLICATION_UID  &&
-			Arrays.binarySearch(mDeviceIdleUserWhitelist, callingUid) < 0 ) {
-			blockAlarm = true;
-		    }
-		}
-	    }
+		        if (workSource != null && workSource.size() > 0 ) {
+                    
+		            if( UserHandle.getAppId(workSource.get(0)) >= Process.FIRST_APPLICATION_UID  &&
+			            Arrays.binarySearch(mDeviceIdleUserWhitelist, workSource.get(0)) < 0 ) {
+			                blockAlarm = true;
+		            }
+		        } else {
+		            if( UserHandle.getAppId(callingUid) >= Process.FIRST_APPLICATION_UID  &&
+			            Arrays.binarySearch(mDeviceIdleUserWhitelist, callingUid) < 0 ) {
+			            blockAlarm = true;
+		            }
+		        }
+	        }
 
-	    if( blockAlarm ) {
+	        if( blockAlarm ) {
                 Slog.e(TAG, "RTC Alarm: (blocked) " + type + " " + blockTag);
 
                 if (type == AlarmManager.RTC_WAKEUP) {
@@ -1217,7 +1217,7 @@ class AlarmManagerService extends SystemService {
                 } else {
                     type = AlarmManager.ELAPSED_REALTIME;
                 }
-	    }
+	        }
 
         }
 
