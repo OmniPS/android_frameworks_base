@@ -3973,6 +3973,16 @@ public final class Settings {
         /**
          * @hide
          */
+        public static final String BUTTON_BACK_KILL_TIMEOUT = "button_back_kill_timeout";
+
+        /**
+         * @hide
+         */
+        public static final String BUTTON_BACK_KILL_ENABLE = "button_back_kill_enable";
+
+        /**
+         * @hide
+         */
         public static final String GLOBAL_ACTIONS_LIST = "global_actions_list";
 
         /**
@@ -4384,6 +4394,57 @@ public final class Settings {
          */
         public static final String SCREENRECORD_QUALITY_MODE = "screenrecord_quality_mode";
 
+                /**
+         * Int value of the battery style 0 is default
+         *
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_STYLE = "statusbar_battery_style";
+
+        /**
+         * int value if the battery percent should be shown never/always/expanded
+         *
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_PERCENT = "statusbar_battery_percent";
+
+        /**
+         * boolean value if the battery percent should be shown inside the image
+         *
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_PERCENT_INSIDE =
+                "statusbar_battery_percent_inside";
+
+        /**
+         * boolean value if the charging flash should be displayed
+         *
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_CHARGING_IMAGE =
+                "statusbar_battery_charging_image";
+
+        /**
+         * int value of the color to use when charging
+         *
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_CHARGING_COLOR =
+                "statusbar_battery_charging_color";
+        /**
+         * enable color when charging
+         *
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_CHARGING_COLOR_ENABLE =
+                "statusbar_battery_charging_color_enable";
+
+        /**
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_DOTTED_LINE =
+                "statusbar_battery_dotted_line";
+
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
@@ -4612,6 +4673,15 @@ public final class Settings {
             PRIVATE_SETTINGS.add(DOUBLE_TAP_SLEEP_LOCKSCREEN);
             PRIVATE_SETTINGS.add(FORCE_AMBIENT_FOR_MEDIA);
             PRIVATE_SETTINGS.add(MUTE_ANNOYING_NOTIFICATIONS_THRESHOLD);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_STYLE);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_PERCENT);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_PERCENT_INSIDE);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_CHARGING_IMAGE);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_CHARGING_COLOR);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_CHARGING_COLOR_ENABLE);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_DOTTED_LINE);
+            PRIVATE_SETTINGS.add(BUTTON_BACK_KILL_TIMEOUT);
+            PRIVATE_SETTINGS.add(BUTTON_BACK_KILL_ENABLE);
         }
 
         /**

@@ -47,6 +47,7 @@
             android:background="?android:selectableItemBackground"
             android:scaleType="center"
             android:src="@drawable/ic_brightness_left"
+            android:visibility="gone"
             />
 
         <com.android.systemui.settings.ToggleSeekBar
@@ -57,6 +58,7 @@
             android:layout_weight="1"
             android:splitTrack="false"
             android:thumb="@drawable/ic_brightness_thumb"
+            android:background="@android:color/transparent"
             />
 
         <ImageView
@@ -67,6 +69,7 @@
             android:background="?android:selectableItemBackground"
             android:scaleType="center"
             android:src="@drawable/ic_brightness_right"
+            android:visibility="gone"
             />
     </LinearLayout>
 

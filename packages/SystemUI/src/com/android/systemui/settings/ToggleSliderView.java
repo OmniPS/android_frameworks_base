@@ -94,7 +94,8 @@ public class ToggleSliderView extends RelativeLayout implements ToggleSlider {
             }
         });
         mLeftButton.setOnLongClickListener(v -> {
-            if (mAutomaticAvailable) {
+            // only on the slider in qs panel
+            if (mMirror != null && mAutomaticAvailable) {
                 toggleBrightnessMode();
             }
             return true;
@@ -115,7 +116,8 @@ public class ToggleSliderView extends RelativeLayout implements ToggleSlider {
             }
         });
         mRightButton.setOnLongClickListener(v -> {
-            if (mAutomaticAvailable) {
+            // only on the slider in qs panel
+            if (mMirror != null && mAutomaticAvailable) {
                 toggleBrightnessMode();
             }
             return true;
@@ -192,12 +194,6 @@ public class ToggleSliderView extends RelativeLayout implements ToggleSlider {
         return super.dispatchTouchEvent(ev);
     }
 
-    @Override
-    public void setAutoBrightness(boolean enable) {
-        mSlider.setThumb(enable ? getResources().getDrawable(R.drawable.ic_qs_brightness_auto_on) :
-                getResources().getDrawable(R.drawable.ic_qs_brightness_auto_off));
-    }
-
     private final OnCheckedChangeListener mCheckListener = new OnCheckedChangeListener() {
         @Override
         public void onCheckedChanged(CompoundButton toggle, boolean checked) {
@@ -254,11 +250,6 @@ public class ToggleSliderView extends RelativeLayout implements ToggleSlider {
             }
         }
     };
-
-    public void setMirrorStyle() {
-        mLeftButton.setVisibility(View.INVISIBLE);
-        mRightButton.setVisibility(View.INVISIBLE);
-    }
 
     public void showSideButtons(boolean enable) {
         mLeftButton.setVisibility(enable ? View.VISIBLE : View.GONE);
