@@ -48,6 +48,7 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.FileUtils;
+import android.os.SystemProperties;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
 import android.os.IMaintenanceActivityListener;
@@ -105,6 +106,8 @@ import java.util.Arrays;
 public class DeviceIdleController extends SystemService
         implements AnyMotionDetector.DeviceIdleCallback {
     private static final String TAG = "DeviceIdleController";
+
+    private static final String SYSTEM_PROPERTY_PM_DEEP_IDLE = "persist.pm.deep_idle";
 
     private static final boolean DEBUG = false;
 
@@ -819,7 +822,7 @@ public class DeviceIdleController extends SystemService
                 MOTION_INACTIVE_TIMEOUT = 0L;
                 IDLE_AFTER_INACTIVE_TIMEOUT = 1000L;
                 IDLE_PENDING_TIMEOUT = 3000L;
-                MAX_IDLE_PENDING_TIMEOUT = 30000L;
+                MAX_IDLE_PENDING_TIMEOUT = 15000L;
                 IDLE_PENDING_FACTOR = 1.0F;
                 IDLE_TIMEOUT = 1*60*60*1000L;
                 MAX_IDLE_TIMEOUT = 12*60*60*1000L;
@@ -1387,8 +1390,10 @@ public class DeviceIdleController extends SystemService
                     ApplicationInfo ai = pm.getApplicationInfo(pkg,
                             PackageManager.MATCH_SYSTEM_ONLY);
                     int appid = UserHandle.getAppId(ai.uid);
-                    mPowerSaveWhitelistAppsExceptIdle.put(ai.packageName, appid);
-                    mPowerSaveWhitelistSystemAppIdsExceptIdle.put(appid, true);
+                    if( !ai.packageName.startsWith("com.google.android.gms") ) {
+                        mPowerSaveWhitelistAppsExceptIdle.put(ai.packageName, appid);
+                        mPowerSaveWhitelistSystemAppIdsExceptIdle.put(appid, true);
+                    }
                 } catch (PackageManager.NameNotFoundException e) {
                 }
             }
@@ -1401,10 +1406,12 @@ public class DeviceIdleController extends SystemService
                     int appid = UserHandle.getAppId(ai.uid);
                     // These apps are on both the whitelist-except-idle as well
                     // as the full whitelist, so they apply in all cases.
-                    mPowerSaveWhitelistAppsExceptIdle.put(ai.packageName, appid);
-                    mPowerSaveWhitelistSystemAppIdsExceptIdle.put(appid, true);
-                    mPowerSaveWhitelistApps.put(ai.packageName, appid);
-                    mPowerSaveWhitelistSystemAppIds.put(appid, true);
+                    if( !ai.packageName.startsWith("com.google.android.gms") ) {
+                        mPowerSaveWhitelistAppsExceptIdle.put(ai.packageName, appid);
+                        mPowerSaveWhitelistSystemAppIdsExceptIdle.put(appid, true);
+                        mPowerSaveWhitelistApps.put(ai.packageName, appid);
+                        mPowerSaveWhitelistSystemAppIds.put(appid, true);
+                    }
                 } catch (PackageManager.NameNotFoundException e) {
                 }
             }
@@ -1942,7 +1949,35 @@ public class DeviceIdleController extends SystemService
             if (mState == STATE_ACTIVE && mDeepEnabled) {
                 mState = STATE_INACTIVE;
                 if (DEBUG) Slog.d(TAG, "Moved from STATE_ACTIVE to STATE_INACTIVE");
+
+            	boolean aggressiveDeepIdle = SystemProperties.get(SYSTEM_PROPERTY_PM_DEEP_IDLE, "0").equals("1");
+
+		if( !aggressiveDeepIdle ) {
+                    mConstants.INACTIVE_TIMEOUT = 30 * 60 * 1000L;
+                    mConstants.SENSING_TIMEOUT = 4 * 60 * 1000L;
+                    mConstants.LOCATING_TIMEOUT = 30 * 1000L;
+                    mConstants.LOCATION_ACCURACY = 100;
+                    mConstants.MOTION_INACTIVE_TIMEOUT = 10 * 60 * 1000L;
+                    mConstants.IDLE_AFTER_INACTIVE_TIMEOUT = 30 * 60 * 1000L;
+                    mConstants.IDLE_PENDING_TIMEOUT = 5 * 60 * 1000L;
+                    mConstants.MAX_IDLE_PENDING_TIMEOUT = 10 * 60 * 1000L;
+		} else {
+                    mConstants.INACTIVE_TIMEOUT = 500L;
+                    mConstants.SENSING_TIMEOUT = 0L;
+                    mConstants.LOCATING_TIMEOUT = 0L;
+                    mConstants.LOCATION_ACCURACY = 100;
+                    mConstants.MOTION_INACTIVE_TIMEOUT = 0L;
+                    mConstants.IDLE_AFTER_INACTIVE_TIMEOUT = 1000L;
+                    mConstants.IDLE_PENDING_TIMEOUT = 3000L;
+                    mConstants.MAX_IDLE_PENDING_TIMEOUT = 15000L;
+
+
+		}
+
+		mInactiveTimeout = mConstants.INACTIVE_TIMEOUT;
+
                 resetIdleManagementLocked();
+
                 scheduleAlarmLocked(mInactiveTimeout, false);
                 EventLogTags.writeDeviceIdle(mState, "no activity");
             }
