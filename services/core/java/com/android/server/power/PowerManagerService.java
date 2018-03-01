@@ -237,6 +237,10 @@ public final class PowerManagerService extends SystemService
 
     private static final String SYSTEM_PROPERTY_PM_READER_MODE = "persist.pm.reader_mode";
 
+    private static final String SYSTEM_PROPERTY_PM_HIDE_GMS = "persist.pm.hide_gms";
+
+    private static final String SYSTEM_PROPERTY_PM_FORCE_GMS = "persist.pm.force_gms";
+
     private static final String SYSTEM_PROPERTY_PM_BON_MIN = "persist.pm.bon_min";
     private static final String SYSTEM_PROPERTY_PM_BON_MAX = "persist.pm.bon_max";
 
@@ -328,6 +332,10 @@ public final class PowerManagerService extends SystemService
     private boolean mTurnOnAfterCall;    
 
     private boolean mReaderMode;    
+
+    private boolean mHideGMS;    
+
+    private boolean mForceGMS;    
 
     private boolean mFollowProximityButtonOn;
     private boolean mFollowProximityButtonOff;
@@ -774,6 +782,9 @@ public final class PowerManagerService extends SystemService
             mTurnOnAfterCall = SystemProperties.get(SYSTEM_PROPERTY_PM_ON_AFTER_CALL, "0").equals("1");
 
             mReaderMode = false; // SystemProperties.get(SYSTEM_PROPERTY_PM_READER_MODE, "0").equals("1");
+
+            mHideGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_HIDE_GMS, "0").equals("1");
+            mForceGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_FORCE_GMS, "0").equals("1");
 
             nativeInit();
             nativeSetAutoSuspend(false);
@@ -1331,7 +1342,8 @@ public final class PowerManagerService extends SystemService
 
     private void applyWakeLockFlagsOnReleaseLocked(WakeLock wakeLock) {
 
-        if ((wakeLock.mFlags & PowerManager.ON_AFTER_RELEASE) != 0
+        if ( !wakeLock.mDisabled &&
+                (wakeLock.mFlags & PowerManager.ON_AFTER_RELEASE) != 0
                 && isScreenLock(wakeLock) ) {
 
             userActivityNoUpdateLocked(SystemClock.uptimeMillis(),
@@ -2625,6 +2637,10 @@ public final class PowerManagerService extends SystemService
         mTurnOnAfterCall = SystemProperties.get(SYSTEM_PROPERTY_PM_ON_AFTER_CALL, "0").equals("1");
 
         mReaderMode = SystemProperties.get(SYSTEM_PROPERTY_PM_READER_MODE, "0").equals("1");
+
+        mHideGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_HIDE_GMS, "0").equals("1");
+        mForceGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_FORCE_GMS, "0").equals("1");
+
     }
 
     private void onDisplayPowerPolicyChanged() {
@@ -5056,7 +5072,13 @@ public final class PowerManagerService extends SystemService
 
         if( DEBUG ) Slog.d(TAG, "isDeviceIdle: uid=" + callingUid);
 
-	    if( isGmsUid(callingUid) ) {
+
+	    if( mForceGMS && isGmsUid(callingUid) ) {
+	        if( DEBUG ) Slog.d(TAG, "isDeviceIdle: GMS force uid=" + callingUid);
+		    return true;
+	    }
+
+	    if( !mHideGMS && isGmsUid(callingUid) ) {
 	        if( DEBUG ) Slog.d(TAG, "isDeviceIdle: GMS hide uid=" + callingUid);
 		    return false;
 	    }
@@ -5076,7 +5098,12 @@ public final class PowerManagerService extends SystemService
 
         if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: uid=" + callingUid);
 
-	    if( isGmsUid(callingUid) ) {
+	    if( mForceGMS && isGmsUid(callingUid) ) {
+	        if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: GMS force uid=" + callingUid);
+		    return true;
+	    }
+
+	    if( !mHideGMS && isGmsUid(callingUid) ) {
 	        if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: GMS hide uid=" + callingUid);
 		    return false;
 	    }
