@@ -39,7 +39,7 @@ class ActivityManagerDebugConfig {
     static final String TAG_AM = "ActivityManager";
 
     // Enable all debug log categories.
-    static final boolean DEBUG_ALL = false;
+    static final boolean DEBUG_ALL = true;
 
     // Enable all debug log categories for activities.
     static final boolean DEBUG_ALL_ACTIVITIES = DEBUG_ALL || false;

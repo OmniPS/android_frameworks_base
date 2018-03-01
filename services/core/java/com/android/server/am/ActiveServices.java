@@ -367,6 +367,7 @@ public final class ActiveServices {
         if (!r.startRequested && !fgRequired) {
             // Before going further -- if this app is not allowed to start services in the
             // background, then at this point we aren't going to let it period.
+            Slog.w(TAG, "getAppStartModeLocked: service=" + service);
             final int allowed = mAm.getAppStartModeLocked(r.appInfo.uid, r.packageName,
                     r.appInfo.targetSdkVersion, callingPid, false, false);
             if (allowed != ActivityManager.APP_START_MODE_NORMAL) {
@@ -621,6 +622,7 @@ public final class ActiveServices {
             for (int i=services.mServicesByName.size()-1; i>=0; i--) {
                 ServiceRecord service = services.mServicesByName.valueAt(i);
                 if (service.appInfo.uid == uid && service.startRequested) {
+                    Slog.w(TAG, "getAppStartModeLocked: stopInBackgroundLocked service=" + service);
                     if (mAm.getAppStartModeLocked(service.appInfo.uid, service.packageName,
                             service.appInfo.targetSdkVersion, -1, false, false)
                             != ActivityManager.APP_START_MODE_NORMAL) {

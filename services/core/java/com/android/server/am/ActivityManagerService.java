@@ -1205,6 +1205,9 @@ public class ActivityManagerService extends IActivityManager.Stub
      */
     DeviceIdleController.LocalService mLocalDeviceIdleController;
 
+    boolean mDeviceIdleMode = false;
+    boolean mLightDeviceIdleMode = false;
+
     /**
      * Set of app ids that are whitelisted for device idle and thus background check.
      */
@@ -1351,6 +1354,8 @@ public class ActivityManagerService extends IActivityManager.Stub
      * For some direct access we need to power manager.
      */
     PowerManagerInternal mLocalPowerManager;
+    PowerManager mPowerManager;
+
 
     /**
      * We want to hold a wake lock while running a voice interaction session, since
@@ -2872,8 +2877,8 @@ public class ActivityManagerService extends IActivityManager.Stub
         mStackSupervisor.initPowerManagement();
         mBatteryStatsService.initPowerManagement();
         mLocalPowerManager = LocalServices.getService(PowerManagerInternal.class);
-        PowerManager pm = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
-        mVoiceWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "*voice*");
+        mPowerManager = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
+        mVoiceWakeLock = mPowerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "*voice*");
         mVoiceWakeLock.setReferenceCounted(false);
     }
 
@@ -7341,6 +7346,21 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
         }, dumpheapFilter);
 
+        IntentFilter idleFilter = new IntentFilter();
+	    idleFilter.addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED);
+        idleFilter.addAction(PowerManager.ACTION_LIGHT_DEVICE_IDLE_MODE_CHANGED);
+
+        mContext.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+	    	    mDeviceIdleMode = mPowerManager.isDeviceIdleMode();
+	    	    mLightDeviceIdleMode = mPowerManager.isLightDeviceIdleMode();
+                if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "DeviceIdleMode changed deep=" + mDeviceIdleMode + ", light=" + mLightDeviceIdleMode);
+		        //if( mDeviceIdleMode || mLightDeviceIdleMode) runInIdleDisabled();
+		    }
+        }, idleFilter);
+
+
         // Let system services know.
         mSystemServiceManager.startBootPhase(SystemService.PHASE_BOOT_COMPLETED);
 
@@ -8539,6 +8559,9 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     public boolean isAppStartModeDisabled(int uid, String packageName) {
         synchronized (this) {
+            if (DEBUG_BACKGROUND_CHECK) {
+                Slog.i(TAG, "isAppStartModeDisabled " + uid + "/" + packageName);
+            }
             return getAppStartModeLocked(uid, packageName, 0, -1, false, true)
                     == ActivityManager.APP_START_MODE_DISABLED;
         }
@@ -8546,19 +8569,28 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     // Unified app-op and target sdk check
     int appRestrictedInBackgroundLocked(int uid, String packageName, int packageTargetSdk) {
+
+        // ...and legacy apps get an AppOp check
+        int appop = mAppOpsService.noteOperation(AppOpsManager.OP_RUN_IN_BACKGROUND,
+                uid, packageName);
+
+        if (DEBUG_BACKGROUND_CHECK) {
+            Slog.i(TAG, "AppOp " + uid + "/" + packageName + " bg appop " + appop);
+        }
+
         // Apps that target O+ are always subject to background check
         if (packageTargetSdk >= Build.VERSION_CODES.O) {
             if (DEBUG_BACKGROUND_CHECK) {
                 Slog.i(TAG, "App " + uid + "/" + packageName + " targets O+, restricted");
             }
+            if( appop == AppOpsManager.MODE_IGNORED ) {
+                Slog.i(TAG, "App " + uid + "/" + packageName + " targets O+, explicitly restricted");
+                return ActivityManager.APP_START_MODE_DELAYED;
+            }
             return ActivityManager.APP_START_MODE_DELAYED_RIGID;
         }
-        // ...and legacy apps get an AppOp check
-        int appop = mAppOpsService.noteOperation(AppOpsManager.OP_RUN_IN_BACKGROUND,
-                uid, packageName);
-        if (DEBUG_BACKGROUND_CHECK) {
-            Slog.i(TAG, "Legacy app " + uid + "/" + packageName + " bg appop " + appop);
-        }
+
+
         switch (appop) {
             case AppOpsManager.MODE_ALLOWED:
                 return ActivityManager.APP_START_MODE_NORMAL;
@@ -8610,7 +8642,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg="
                 + packageName + " rec=" + uidRec + " always=" + alwaysRestrict + " idle="
                 + (uidRec != null ? uidRec.idle : false));
-        if (uidRec == null || alwaysRestrict || uidRec.idle) {
+        if (uidRec == null || alwaysRestrict || uidRec.idle || mDeviceIdleMode || mLightDeviceIdleMode) {
             boolean ephemeral;
             if (uidRec == null) {
                 ephemeral = getPackageManagerInternalLocked().isPackageEphemeral(
@@ -8620,6 +8652,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
 
             if (ephemeral) {
+                if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg=" + packageName + " ethemeral disabled");
                 // We are hard-core about ephemeral apps not running in the background.
                 return ActivityManager.APP_START_MODE_DISABLED;
             } else {
@@ -8628,6 +8661,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                     // disabled for the given package (that is, it is an instant app).  So
                     // we don't need to go further, which is all just seeing if we should
                     // apply a "delayed" mode for a regular app.
+                    if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg=" + packageName + " not disabled");
                     return ActivityManager.APP_START_MODE_NORMAL;
                 }
                 final int startMode = (alwaysRestrict)
@@ -8650,6 +8684,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                                 !ActivityManager.isProcStateBackground(proc.curProcState)) {
                             // Whoever is instigating this is in the foreground, so we will allow it
                             // to go through.
+                            if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg=" + packageName + " foreground enabled");
                             return ActivityManager.APP_START_MODE_NORMAL;
                         }
                     }
@@ -8657,6 +8692,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 return startMode;
             }
         }
+        if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg=" + packageName + " not idle enabled");
         return ActivityManager.APP_START_MODE_NORMAL;
     }
 

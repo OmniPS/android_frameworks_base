@@ -1251,6 +1251,7 @@ public final class BroadcastQueue {
                     info.activityInfo.applicationInfo.uid, false);
 
             if (!skip) {
+                Slog.w(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
                 final int allowed = mService.getAppStartModeLocked(
                         info.activityInfo.applicationInfo.uid, info.activityInfo.packageName,
                         info.activityInfo.applicationInfo.targetSdkVersion, -1, true, false);
@@ -1259,7 +1260,7 @@ public final class BroadcastQueue {
                     // completely disabled from launches, or it was not explicitly sent
                     // to it and the app is in a state that should not receive it
                     // (depending on how getAppStartModeLocked has determined that).
-                    if (allowed == ActivityManager.APP_START_MODE_DISABLED) {
+                    if (allowed == ActivityManager.APP_START_MODE_DISABLED || allowed == ActivityManager.APP_START_MODE_DELAYED ) {
                         Slog.w(TAG, "Background execution disabled: receiving "
                                 + r.intent + " to "
                                 + component.flattenToShortString());
