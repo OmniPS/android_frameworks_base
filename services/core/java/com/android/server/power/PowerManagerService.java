@@ -880,13 +880,14 @@ public final class PowerManagerService extends SystemService
                     mDisplayPowerCallbacks, mHandler, mSensorManager);
 
 
+            /*
             mProximitySensor = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
             if (mProximitySensor != null) {
                 mProximityThreshold = Math.min(mProximitySensor.getMaximumRange(),
                         TYPICAL_PROXIMITY_THRESHOLD);
-            }
+            }*/
 
-	    initHalSensor();
+	        initHalSensor();
 
             // Go.
             readConfigurationLocked();
@@ -2335,8 +2336,6 @@ public final class PowerManagerService extends SystemService
                 || (mUserActivitySummary & (USER_ACTIVITY_SCREEN_BRIGHT
                         | USER_ACTIVITY_SCREEN_DIM)) != 0
                 || mScreenBrightnessBoostInProgress;
-
-        if( DEBUG ) Slog.d(TAG,"isBeingKeptAwakeLocked:" + bedTime);
         return bedTime;
     }
 
@@ -3123,6 +3122,8 @@ public final class PowerManagerService extends SystemService
      *
      * This function must have no other side-effects.
      */
+
+    boolean bSuspendBlocked = false;
     private void updateSuspendBlockerLocked() {
         final boolean needWakeLockSuspendBlocker = ((mWakeLockSummary & WAKE_LOCK_CPU) != 0);
         final boolean needDisplaySuspendBlocker = needDisplaySuspendBlockerLocked();
@@ -3176,6 +3177,12 @@ public final class PowerManagerService extends SystemService
         if (autoSuspend /* && !needWakeLockSuspendBlocker && mDecoupleHalAutoSuspendModeFromDisplayConfig */) {
             setHalAutoSuspendModeLocked(true);
         }
+
+        if( (mHoldingDisplaySuspendBlocker || mHoldingWakeLockSuspendBlocker) != bSuspendBlocked ) {
+            bSuspendBlocked = mHoldingDisplaySuspendBlocker || mHoldingWakeLockSuspendBlocker;
+            if( DEBUG ) Slog.d(TAG,"isFrameworkSuspended:" + !bSuspendBlocked);
+        }
+
     }
 
     /**
@@ -3203,7 +3210,7 @@ public final class PowerManagerService extends SystemService
             mHandler.removeMessages(MSG_UPDATE_POWERSTATE);
 
             final long now = SystemClock.uptimeMillis();
-            if( now - mLastUserActivityTime < 2000 ) {
+            if( mReaderMode && ( now - mLastUserActivityTime < 2000 ) ) {
                 Message msg = mHandler.obtainMessage(MSG_UPDATE_POWERSTATE);
                 msg.setAsynchronous(true);
                 mHandler.sendMessageAtTime(msg, mLastUserActivityTime + 2000);
@@ -5067,21 +5074,26 @@ public final class PowerManagerService extends SystemService
         @Override // Binder call
         public boolean isDeviceIdleMode() {
 
-	    final int callingUid = Binder.getCallingUid();
+	        final int callingUid = Binder.getCallingUid();
 
 
-        if( DEBUG ) Slog.d(TAG, "isDeviceIdle: uid=" + callingUid);
+            if( DEBUG ) Slog.d(TAG, "isDeviceIdle: uid=" + callingUid);
 
+            if( isGmsUid(callingUid) ) {
 
-	    if( mForceGMS && isGmsUid(callingUid) ) {
-	        if( DEBUG ) Slog.d(TAG, "isDeviceIdle: GMS force uid=" + callingUid);
-		    return true;
-	    }
+                if( DEBUG ) Slog.d(TAG,"GMS isDeviceIdleMode here:", new Throwable());
 
-	    if( !mHideGMS && isGmsUid(callingUid) ) {
-	        if( DEBUG ) Slog.d(TAG, "isDeviceIdle: GMS hide uid=" + callingUid);
-		    return false;
-	    }
+	            if( !mHideGMS  ) {
+	                if( DEBUG ) Slog.d(TAG, "isDeviceIdle: GMS hide uid=" + callingUid);
+		            return false;
+	            }
+
+	            if( mForceGMS  ) {
+	                if( DEBUG ) Slog.d(TAG, "isDeviceIdle: GMS force uid=" + callingUid);
+		            return true;
+	            }
+
+            }
 
             final long ident = Binder.clearCallingIdentity();
             try {
@@ -5094,19 +5106,19 @@ public final class PowerManagerService extends SystemService
         @Override // Binder call
         public boolean isLightDeviceIdleMode() {
 
-	    final int callingUid = Binder.getCallingUid();
+	        final int callingUid = Binder.getCallingUid();
 
-        if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: uid=" + callingUid);
+            if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: uid=" + callingUid);
 
-	    if( mForceGMS && isGmsUid(callingUid) ) {
-	        if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: GMS force uid=" + callingUid);
-		    return true;
-	    }
+	        if( mForceGMS && isGmsUid(callingUid) ) {
+	            if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: GMS force uid=" + callingUid);
+		        return false;
+	        }
 
-	    if( !mHideGMS && isGmsUid(callingUid) ) {
-	        if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: GMS hide uid=" + callingUid);
-		    return false;
-	    }
+	        if( !mHideGMS && isGmsUid(callingUid) ) {
+	            if( DEBUG ) Slog.d(TAG, "isLightDeviceIdle: GMS hide uid=" + callingUid);
+		        return false;
+	        }
 
             final long ident = Binder.clearCallingIdentity();
             try {
