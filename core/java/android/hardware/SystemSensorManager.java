@@ -167,7 +167,7 @@ public class SystemSensorManager extends SensorManager {
             String pkgName = mContext.getPackageName();
             Log.w(TAG, "Preventing " + pkgName + " from draining battery using " +
                        "significant motion sensor");
-            return false;
+            return true;
         }
 
         // Invariants to preserve:
@@ -228,6 +228,13 @@ public class SystemSensorManager extends SensorManager {
         if (listener == null) throw new IllegalArgumentException("listener cannot be null");
 
         if (sensor.getReportingMode() != Sensor.REPORTING_MODE_ONE_SHOT) return false;
+
+        if (sensor.getType() == Sensor.TYPE_SIGNIFICANT_MOTION) {
+            String pkgName = mContext.getPackageName();
+            Log.w(TAG, "Preventing " + pkgName + " from draining battery using " +
+                       "significant motion sensor");
+            return true;
+        }
 
         if (mTriggerListeners.size() >= MAX_LISTENER_COUNT) {
             throw new IllegalStateException("request failed, " +
