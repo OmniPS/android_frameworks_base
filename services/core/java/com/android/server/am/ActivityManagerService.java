@@ -8574,6 +8574,12 @@ public class ActivityManagerService extends IActivityManager.Stub
         int appop = mAppOpsService.noteOperation(AppOpsManager.OP_RUN_IN_BACKGROUND,
                 uid, packageName);
 
+
+        if( !(mDeviceIdleMode || mLightDeviceIdleMode) ) {
+            appop = mAppOpsService.noteOperation(AppOpsManager.OP_WAKE_LOCK,
+                uid, packageName);
+        }
+
         if (DEBUG_BACKGROUND_CHECK) {
             Slog.i(TAG, "AppOp " + uid + "/" + packageName + " bg appop " + appop);
         }
@@ -8591,11 +8597,14 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
 
+        // if( ! (mDeviceIdleMode || mLightDeviceIdleMode) ) return ActivityManager.APP_START_MODE_NORMAL;
         switch (appop) {
             case AppOpsManager.MODE_ALLOWED:
                 return ActivityManager.APP_START_MODE_NORMAL;
             case AppOpsManager.MODE_IGNORED:
                 return ActivityManager.APP_START_MODE_DELAYED;
+            case AppOpsManager.MODE_ERRORED:
+                return ActivityManager.APP_START_MODE_NORMAL;
             default:
                 return ActivityManager.APP_START_MODE_DELAYED_RIGID;
         }
