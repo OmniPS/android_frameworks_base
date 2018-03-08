@@ -40,8 +40,6 @@ import android.util.DisplayMetrics;
 import com.android.systemui.R;
 import com.android.systemui.statusbar.policy.BatteryController;
 
-import java.text.NumberFormat;
-
 public class BatteryCirclePercentView extends AbstractBatteryView  {
     public static final String TAG = BatteryCirclePercentView.class.getSimpleName();
 
@@ -168,7 +166,7 @@ public class BatteryCirclePercentView extends AbstractBatteryView  {
                     bounds = new RectF(0, 0, mWidth, mHeight);
                 }
             } else {
-                percentage = NumberFormat.getPercentInstance().format((double) level / 100.0);
+                percentage = getPercentText();
                 textOffset = mTextHeight / 2 - mPercentOffsetY;
                 bounds = new RectF(mCircleWidth + 3 * mStrokeWidth, 0, mWidth, mHeight);
             }
@@ -189,7 +187,7 @@ public class BatteryCirclePercentView extends AbstractBatteryView  {
             Typeface font = Typeface.create("sans-serif-condensed", Typeface.BOLD);
             mTextPaint.setTypeface(font);
             mTextPaint.setTextAlign(Paint.Align.CENTER);
-            mTextSize = (int)(mCircleWidth * 0.5f);
+            mTextSize = (int)(mCircleWidth * 0.6f);
             mTextPaint.setTextSize(mTextSize);
             Rect bounds = new Rect();
             String text = "100";
@@ -215,7 +213,7 @@ public class BatteryCirclePercentView extends AbstractBatteryView  {
     private void updatePercentFontSize() {
         final int level = mLevel;
         if (mPercentInside) {
-            mTextSize = (int)(mCircleWidth * (level == 100 ?  0.4f : 0.5f));
+            mTextSize = (int)(mCircleWidth * (level == 100 ?  0.4f : 0.6f));
             mTextPaint.setTextSize(mTextSize);
         } else {
             updateExtraPercentFontSize();
@@ -225,8 +223,8 @@ public class BatteryCirclePercentView extends AbstractBatteryView  {
     @Override
     public void loadDimens() {
         DisplayMetrics metrics = getResources().getDisplayMetrics();
-        mCircleWidth = (int) (18 * metrics.density + 0.5f);
-        mStrokeWidth = (int) (mCircleWidth / 6.5f);
+        mCircleWidth = (int) (17 * metrics.density + 0.5f);
+        mStrokeWidth = (int) (mCircleWidth / 9f);
         mBatteryPaint.setStrokeWidth(mStrokeWidth);
         mFramePaint.setStrokeWidth(mStrokeWidth);
         mPercentOffsetY = (int) (0.4 * metrics.density + 0.5f);

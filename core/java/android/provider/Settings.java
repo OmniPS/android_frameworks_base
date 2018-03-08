@@ -4431,6 +4431,7 @@ public final class Settings {
          */
         public static final String STATUSBAR_BATTERY_CHARGING_COLOR =
                 "statusbar_battery_charging_color";
+
         /**
          * enable color when charging
          *
@@ -4444,6 +4445,14 @@ public final class Settings {
          */
         public static final String STATUSBAR_BATTERY_DOTTED_LINE =
                 "statusbar_battery_dotted_line";
+
+        /**
+         * force show percent on keyguard and qspanel
+         *
+         * @hide
+         */
+        public static final String STATUSBAR_BATTERY_FORCE_PERCENT =
+                "statusbar_battery_force_percent";
 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
@@ -4682,6 +4691,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_DOTTED_LINE);
             PRIVATE_SETTINGS.add(BUTTON_BACK_KILL_TIMEOUT);
             PRIVATE_SETTINGS.add(BUTTON_BACK_KILL_ENABLE);
+            PRIVATE_SETTINGS.add(STATUSBAR_BATTERY_FORCE_PERCENT);
         }
 
         /**
@@ -7719,6 +7729,13 @@ public final class Settings {
          * @hide
          */
         public static final String QS_AUTO_ADDED_TILES = "qs_auto_tiles";
+
+        /**
+         * Disable expanding quick settings on secure lock screens
+         *
+         * @hide
+         */
+        public static final String LOCK_QS_DISABLED = "lockscreen_qs_disabled";
 
         /**
          * This are the settings to be backed up.
@@ -10874,6 +10891,16 @@ public final class Settings {
          * @hide
          */
         public static final String SCREEN_ON_ANIMATION = "screen_on_animation";
+
+        /**
+         * @hide
+         */
+        public static final String USB_DEFAULT_CONFIGURATION = "usb_default_configuration";
+
+        /**
+         * @hide
+         */
+        public static final String USB_PARANOIA_CONNECT = "usb_paranoia_connect";
 
         /**
          * Flag to enable use of RefactoredBackupManagerService.

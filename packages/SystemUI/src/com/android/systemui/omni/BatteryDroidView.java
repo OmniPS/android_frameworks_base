@@ -45,8 +45,6 @@ import android.util.DisplayMetrics;
 import com.android.systemui.R;
 import com.android.systemui.statusbar.policy.BatteryController;
 
-import java.text.NumberFormat;
-
 public class BatteryDroidView extends AbstractBatteryView {
     public static final String TAG = BatteryDroidView.class.getSimpleName();
 
@@ -100,7 +98,7 @@ public class BatteryDroidView extends AbstractBatteryView {
         mBatteryPaint.setStyle(Paint.Style.STROKE);
         mBatteryPaint.setPathEffect(null);
 
-        mDroid = getResources().getDrawable(R.drawable.status_bar_logo);
+        mDroid = getResources().getDrawable(R.drawable.omni_logo_borderless);
 
         doUpdateStyle();
     }
@@ -206,7 +204,7 @@ public class BatteryDroidView extends AbstractBatteryView {
                     bounds = new RectF(0, 0, mWidth, mHeight);
                 }
             } else {
-                percentage = NumberFormat.getPercentInstance().format((double) level / 100.0);
+                percentage = getPercentText();
                 textOffset = mTextHeight / 2 - mPercentOffsetY;
                 bounds = new RectF(mCircleWidth + 3 * mStrokeWidth, 0, mWidth, mHeight);
             }
@@ -263,8 +261,8 @@ public class BatteryDroidView extends AbstractBatteryView {
     @Override
     public void loadDimens() {
         DisplayMetrics metrics = getResources().getDisplayMetrics();
-        mCircleWidth = (int) (18 * metrics.density + 0.5f);
-        mStrokeWidth = (int) (mCircleWidth / 6.5f);
+        mCircleWidth = (int) (16 * metrics.density + 0.5f);
+        mStrokeWidth = (int) (mCircleWidth / 7f);
         mBatteryPaint.setStrokeWidth(mStrokeWidth);
         mFramePaint.setStrokeWidth(mStrokeWidth);
         mPercentOffsetY = (int) (0.4 * metrics.density + 0.5f);
