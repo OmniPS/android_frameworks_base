@@ -95,7 +95,7 @@ import java.io.PrintWriter;
 public final class BatteryService extends SystemService {
     private static final String TAG = BatteryService.class.getSimpleName();
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
 
     private static final int BATTERY_SCALE = 100;    // battery capacity is a percentage
 
@@ -402,11 +402,11 @@ public final class BatteryService extends SystemService {
                 mBatteryProps.batteryPresent != mLastBatteryPresent ||
                 mBatteryProps.batteryLevel != mLastBatteryLevel ||
                 mPlugType != mLastPlugType ||
-                mBatteryProps.batteryVoltage != mLastBatteryVoltage ||
-                mBatteryProps.batteryTemperature != mLastBatteryTemperature ||
+                mBatteryProps.batteryVoltage/100 != mLastBatteryVoltage/100 ||
+                mBatteryProps.batteryTemperature/10 != mLastBatteryTemperature/10 ||
                 mBatteryProps.maxChargingCurrent != mLastMaxChargingCurrent ||
                 mBatteryProps.maxChargingVoltage != mLastMaxChargingVoltage ||
-                mBatteryProps.batteryChargeCounter != mLastChargeCounter ||
+                //mBatteryProps.batteryChargeCounter != mLastChargeCounter ||
                 mInvalidCharger != mLastInvalidCharger)) {
 
             if (mPlugType != mLastPlugType) {
@@ -915,6 +915,7 @@ public final class BatteryService extends SystemService {
 
         protected void fastCharge(int mWatt) {
             mIsFastCharging = mWatt > mFastThreshold;
+            if (DEBUG) Slog.v(TAG, "mWatt: " + mWatt);
             updateLightsLocked();
         }
 
