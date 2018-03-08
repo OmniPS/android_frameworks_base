@@ -39,7 +39,7 @@ class ActivityManagerDebugConfig {
     static final String TAG_AM = "ActivityManager";
 
     // Enable all debug log categories.
-    static final boolean DEBUG_ALL = true;
+    static final boolean DEBUG_ALL = false;
 
     // Enable all debug log categories for activities.
     static final boolean DEBUG_ALL_ACTIVITIES = DEBUG_ALL || false;
@@ -50,7 +50,7 @@ class ActivityManagerDebugConfig {
     static final boolean DEBUG_APP = DEBUG_ALL_ACTIVITIES || false;
     static final boolean DEBUG_BACKGROUND_CHECK = DEBUG_ALL || true;
     static final boolean DEBUG_BACKUP = DEBUG_ALL || false;
-    static final boolean DEBUG_BROADCAST = DEBUG_ALL || false;
+    static final boolean DEBUG_BROADCAST = DEBUG_ALL || true;
     static final boolean DEBUG_BROADCAST_BACKGROUND = DEBUG_BROADCAST || false;
     static final boolean DEBUG_BROADCAST_LIGHT = DEBUG_BROADCAST || false;
     static final boolean DEBUG_CLEANUP = DEBUG_ALL || false;
@@ -93,7 +93,7 @@ class ActivityManagerDebugConfig {
     static final boolean DEBUG_VISIBILITY = DEBUG_ALL || false;
     static final boolean DEBUG_USAGE_STATS = DEBUG_ALL || false;
     static final boolean DEBUG_PERMISSIONS_REVIEW = DEBUG_ALL || false;
-    static final boolean DEBUG_WHITELISTS = DEBUG_ALL || false;
+    static final boolean DEBUG_WHITELISTS = DEBUG_ALL || true;
 
     static final String POSTFIX_ADD_REMOVE = (APPEND_CATEGORY_NAME) ? "_AddRemove" : "";
     static final String POSTFIX_APP = (APPEND_CATEGORY_NAME) ? "_App" : "";
