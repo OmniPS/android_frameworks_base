@@ -37,6 +37,21 @@
             android:title="@string/tuner_show_brightness_side_buttons"
             sysui:defValue="true" />
 
+        <com.android.systemui.tuner.TunerSwitch
+            android:key="qs_show_carrier"
+            android:title="@string/qs_show_carrier"
+            sysui:defValue="true" />
+
+        <com.android.systemui.tuner.TunerSwitch
+            android:key="qs_show_clock"
+            android:title="@string/qs_show_clock"
+            sysui:defValue="true" />
+
+        <com.android.systemui.tuner.TunerSwitch
+            android:key="qs_show_battery"
+            android:title="@string/qs_show_battery"
+            sysui:defValue="true" />
+
     </PreferenceScreen>
     
     <PreferenceScreen
@@ -116,11 +131,6 @@
             android:title="@string/status_bar_vpn" />
 
         <!-- secure -->
-
-        <com.android.systemui.tuner.ClockPreference
-            android:title="@string/tuner_time"
-            android:summary="%s"
-            android:entries="@array/clock_options" />
 
     </PreferenceScreen>
 

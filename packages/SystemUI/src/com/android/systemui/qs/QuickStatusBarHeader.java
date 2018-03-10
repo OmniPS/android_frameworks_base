@@ -46,11 +46,18 @@ import com.android.systemui.omni.StatusBarHeaderMachine;
 import com.android.systemui.plugins.ActivityStarter;
 import com.android.systemui.qs.QSDetail.Callback;
 import com.android.systemui.statusbar.SignalClusterView;
+import com.android.systemui.statusbar.policy.Clock;
 import com.android.systemui.statusbar.policy.DarkIconDispatcher.DarkReceiver;
+import com.android.systemui.tuner.TunerService;
+import com.android.systemui.tuner.TunerService.Tunable;
 
 
-public class QuickStatusBarHeader extends FrameLayout implements StatusBarHeaderMachine.IStatusBarHeaderMachineObserver {
+public class QuickStatusBarHeader extends FrameLayout implements
+        StatusBarHeaderMachine.IStatusBarHeaderMachineObserver, Tunable {
     private static final String TAG = "QuickStatusBarHeader";
+    public static final String QS_SHOW_CARRIER = "qs_show_carrier";
+    public static final String QS_SHOW_BATTERY = "qs_show_battery";
+    public static final String QS_SHOW_CLOCK = "qs_show_clock";
 
     private ActivityStarter mActivityStarter;
 
@@ -67,6 +74,9 @@ public class QuickStatusBarHeader extends FrameLayout implements StatusBarHeader
     private ImageView mBackgroundImage;
     private Drawable mCurrentBackground;
     private BatteryViewManager mBatteryViewManager;
+
+    private Clock mClock;
+    private Clock mLeftClock;
 
     public QuickStatusBarHeader(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -93,9 +103,16 @@ public class QuickStatusBarHeader extends FrameLayout implements StatusBarHeader
         float intensity = colorForeground == Color.WHITE ? 0 : 1;
         Rect tintArea = new Rect(0, 0, 0, 0);
 
-        applyDarkness(R.id.battery, tintArea, intensity, colorForeground);
         applyDarkness(R.id.clock, tintArea, intensity, colorForeground);
+        applyDarkness(R.id.left_clock, tintArea, intensity, colorForeground);
         applyDarkness(R.id.battery_style, tintArea, intensity, colorForeground);
+
+        mClock = findViewById(R.id.clock);
+        ((Clock)mClock).setForceHideDate(true);
+        mClock.updateSettings();
+        mLeftClock = findViewById(R.id.left_clock);
+        ((Clock)mLeftClock).setForceHideDate(true);
+        mLeftClock.updateSettings();
 
         mActivityStarter = Dependency.get(ActivityStarter.class);
 
@@ -103,6 +120,15 @@ public class QuickStatusBarHeader extends FrameLayout implements StatusBarHeader
         mQuickQsPanelScroller.setHorizontalScrollBarEnabled(false);
 
         mBackgroundImage = (ImageView) findViewById(R.id.qs_header_image);
+    }
+
+    public void updateQsbhClock() {
+        if (mClock != null) {
+            ((Clock)mClock).updateSettings();
+        }
+        if (mLeftClock != null) {
+            ((Clock)mLeftClock).updateSettings();
+        }
     }
 
     private void applyDarkness(int id, Rect tintArea, float intensity, int color) {
@@ -147,9 +173,18 @@ public class QuickStatusBarHeader extends FrameLayout implements StatusBarHeader
     }
 
     @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        Dependency.get(TunerService.class).addTunable(this, QS_SHOW_CARRIER);
+        Dependency.get(TunerService.class).addTunable(this, QS_SHOW_CLOCK);
+        Dependency.get(TunerService.class).addTunable(this, QS_SHOW_BATTERY);
+    }
+
+    @Override
     @VisibleForTesting
     public void onDetachedFromWindow() {
         setListening(false);
+        Dependency.get(TunerService.class).removeTunable(this);
         super.onDetachedFromWindow();
     }
 
@@ -272,6 +307,25 @@ public class QuickStatusBarHeader extends FrameLayout implements StatusBarHeader
             ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) mQsPanel.getLayoutParams();
             layoutParams.topMargin = panelMarginTop;
             mQsPanel.setLayoutParams(layoutParams);
+        }
+    }
+
+    @Override
+    public void onTuningChanged(String key, String newValue) {
+        if (QS_SHOW_CARRIER.equals(key)) {
+            findViewById(R.id.qs_carrier_text).setVisibility(newValue == null || Integer.parseInt(newValue) != 0
+                    ? VISIBLE : INVISIBLE);
+        }
+        if (QS_SHOW_CLOCK.equals(key)) {
+            boolean hideClock = newValue != null && Integer.parseInt(newValue) == 0;
+            mClock.setForceHide(hideClock);
+            mLeftClock.setForceHide(hideClock);
+            mClock.updateClockVisibility();
+            mLeftClock.updateClockVisibility();
+        }
+        if (QS_SHOW_BATTERY.equals(key)) {
+            mBatteryViewManager.setBatteryVisibility(newValue == null || Integer.parseInt(newValue) != 0
+                    ? true : false);
         }
     }
 }
