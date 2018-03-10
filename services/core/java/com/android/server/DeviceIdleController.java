@@ -108,8 +108,9 @@ public class DeviceIdleController extends SystemService
     private static final String TAG = "DeviceIdleController";
 
     private static final String SYSTEM_PROPERTY_PM_DEEP_IDLE = "persist.pm.deep_idle";
+    private static final String SYSTEM_PROPERTY_PM_FREE_NET = "persist.pm.free_net";
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
 
     private static final boolean COMPRESS_TIME = false;
 
@@ -1055,6 +1056,9 @@ public class DeviceIdleController extends SystemService
 
         @Override public void handleMessage(Message msg) {
             if (DEBUG) Slog.d(TAG, "handleMessage(" + msg.what + ")");
+
+            boolean freeNetwork = SystemProperties.get(SYSTEM_PROPERTY_PM_FREE_NET, "0").equals("1");
+
             switch (msg.what) {
                 case MSG_WRITE_CONFIG: {
                     // Does not hold a wakelock. Just let this happen whenever.
@@ -1074,7 +1078,7 @@ public class DeviceIdleController extends SystemService
                         lightChanged = mLocalPowerManager.setLightDeviceIdleMode(true);
                     }
                     try {
-                        mNetworkPolicyManager.setDeviceIdleMode(false);
+                        mNetworkPolicyManager.setDeviceIdleMode(!freeNetwork);
                         mBatteryStats.noteDeviceIdleMode(msg.what == MSG_REPORT_IDLE_ON
                                 ? BatteryStats.DEVICE_IDLE_MODE_DEEP
                                 : BatteryStats.DEVICE_IDLE_MODE_LIGHT, null, Process.myUid());
@@ -1951,6 +1955,7 @@ public class DeviceIdleController extends SystemService
                 if (DEBUG) Slog.d(TAG, "Moved from STATE_ACTIVE to STATE_INACTIVE");
 
             	boolean aggressiveDeepIdle = SystemProperties.get(SYSTEM_PROPERTY_PM_DEEP_IDLE, "0").equals("1");
+
 
 		if( !aggressiveDeepIdle ) {
                     mConstants.INACTIVE_TIMEOUT = 30 * 60 * 1000L;
