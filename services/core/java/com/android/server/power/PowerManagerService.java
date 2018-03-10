@@ -3573,12 +3573,15 @@ public final class PowerManagerService extends SystemService
         }
     }
 
-    private int gmsUid = -1;
+    private static int gmsUid = -1;
     private boolean isGmsUid(int uid) {
-
         int appid = UserHandle.getAppId(uid);
-	if( appid == gmsUid ) return true;
-	return false;
+	    if( appid == gmsUid ) return true;
+	    return false;
+    }
+
+    public static int getGmsUid() {
+        return gmsUid;
     }
 
     private boolean setWakeLockDisabledStateLocked(WakeLock wakeLock) {
