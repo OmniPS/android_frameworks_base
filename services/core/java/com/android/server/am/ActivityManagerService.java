@@ -8645,6 +8645,131 @@ public class ActivityManagerService extends IActivityManager.Stub
         return appRestrictedInBackgroundLocked(uid, packageName, packageTargetSdk);
     }
 
+
+    boolean isWhiteListedIntent(String packageName,Intent intent) {
+	    ComponentName cmp = intent.getComponent();
+	    String cls=null;
+	    String pkg=null;
+	    if( cmp != null ) {
+	        pkg = cmp.getPackageName();
+	        cls = cmp.getClassName();
+	        if( pkg == null ) pkg = packageName;
+ 	        if( cls != null ) {
+		        if( isWhitelistedService(pkg,cls,null) ) return true;
+	        }
+	    }
+
+	    String act = intent.getAction();
+	    pkg = intent.getPackage();
+        if( pkg == null ) pkg = packageName;
+	    if( act != null ) {
+	        if( isWhitelistedService(pkg,null,act) ) return true;
+	    }
+        //Slog.d(TAG, "checkKeep:(5) blocked intent=" + intent + ", pkg=" + pkg + ", cls=" + cls + ", act=" + act);
+	    return false;
+    }
+
+    boolean isWhitelistedService(String packageName,String cls, String act) {
+
+	    if( packageName == null ) return true;
+	    else if( packageName.startsWith("com.google.android.gms") ) {
+	        if( cls != null ) {
+		        if( cls.contains("com.google.android.gms.auth") ) return true;
+		        if( cls.contains("com.google.android.gms.gcm") ) return true;
+
+        		//if( cls.contains("com.google.android.gms.backup.BackupTransportService") ) return true;
+		        //if( cls.contains("com.google.android.gms.chimera.GmsIntentOperationService") ) return true;
+        		//if( cls.contains("com.google.android.gms.chimera.PersistentBoundBrokerService") ) return true;
+        		if( cls.contains("com.google.android.gms.config.ConfigService") ) return true;
+        		if( cls.contains("com.google.android.gms.deviceconnection") ) return true;
+        		if( cls.contains("com.google.android.gms.lockbox") ) return true;
+        		if( cls.contains("com.google.android.gms.security.snet") ) return true;
+        		if( cls.contains("com.google.android.gms.droidguard") ) return true;
+        		//if( cls.contains("com.google.android.gms.common") ) return true;
+        		//if( cls.contains("com.google.android.gms.tapandpay") ) return true;
+        		//if( cls.contains("com.google.android.gms.gass") ) return true;
+        		if( cls.contains("com.google.android.gms.trustagent") ) return true;
+        		//if( cls.contains("com.google.android.location.internal.server.GoogleLocationService") ) return true;
+        		//if( cls.contains("com.google.android.location.internal.PendingIntentCallbackService") ) return true;
+	        }
+
+	        if( act != null ) {
+    		    if( act.contains("com.google.android.c2dm") ) return true;
+	    	    if( act.contains("com.google.android.gms.auth.DATA_PROXY") ) return true;
+    		    if( act.contains("com.google.android.gms.config") ) return true;
+    		    if( act.contains("com.google.android.gms.droidguard") ) return true;
+    		    //if( act.contains("com.google.android.gms.common") ) return true;
+    		    //if( act.contains("com.google.android.location.internal.action.FLP_LOW_POWER_LOCATION_RESULT") ) return true;
+    		    //if( act.contains("com.google.android.location.internal.GoogleLocationManagerService") ) return true;
+            }
+        //} else if( packageName.startsWith("com.android") && !packageName.startsWith("com.android.chrome") ) {
+	        //return true;
+        //} else if( packageName.equals("com.viber.voip") ) {
+            //return true;
+        //} else if( packageName.equals("com.whatsapp") ) {
+            //return true;
+   	    } else if( packageName.equals("ru.yandex.weatherplugin") ) {
+            if( cls != null && cls.contains("ru.yandex.weatherplugin.widgets.updater.WidgetService") ) return true;
+        //} else if( packageName.equals("org.telegram.messenger") ) {
+            //return true;
+    	//} else if( packageName.equals("com.microsoft.cortana") ) {
+    	    //return true;
+        //}  else if( packageName.startsWith("com.skype") ) {
+            //return true;
+        //}  else if( packageName.equals("com.microsoft.office.outlook") ) {
+            //return true;
+    	} 
+
+    	String sPkg = packageName;
+    	String sCls = cls;
+    	String sAct = act;
+
+    	if( sPkg == null ) sPkg = "null";
+    	if( sCls == null ) sCls = "null";
+    	if( sAct == null ) sAct = "null";
+    	String tag = sPkg + ";" + sCls + ";" + sAct;
+    	//if (!mSeenServices.contains(tag)) {
+                //mSeenServices.add(tag);
+                //if( DEBUG_SPEW ) Slog.d(TAG, "checkKeep:(7) service;" + tag);
+    	//}
+
+
+    	if( cls != null ) {
+            //if( cls.contains(".GcmPushListenerService") ) return true;
+            //if( cls.contains(".gcm.nts.SchedulerInternalReceiver") ) return true;
+            //if( cls.contains(".tapandpay.gcmtask.TapAndPayGcmTaskService") ) return true;
+            //if( cls.contains(".service.GcmFGService") ) return true;
+            //if( cls.contains(".gcm.RegistrationIntentService") ) return true;
+            //if( cls.contains(".ModelSyncService") ) return true;
+            //if( cls.contains(".NotificationsService") ) return true;
+            //if( cls.contains(".VoipConnectorService") ) return true;
+            //if( cls.contains(".GcmRegistrationIntentService") ) return true;
+            if( cls.contains(".auth.trustagent") ) return true;
+            if( cls.contains(".trustagent") ) return true;
+            if( cls.contains(".trustlet") ) return true;
+            if( cls.contains(".droidguard") ) return true;
+        }
+
+	    if( act != null ) {
+		    // Activities
+		    if( act.contains("com.google.android.c2dm") ) return true;
+	    	if( act.contains("com.google.android.gms.gcm") ) return true;
+	    	if( act.contains("android.net.conn.DATA_ACTIVITY_CHANGE") ) return true;
+	    	if( act.contains("com.google.android.intent.action.GCM_RECONNECT") ) return true;
+            if( act.contains("com.microsoft.react.push") ) return true;
+	    	if( act.contains("android.intent.action.SCREEN_OFF") ) return true;
+	    	if( act.contains("android.intent.action.SCREEN_ON") ) return true;
+	    	if( act.contains("android.os.action.DEVICE_IDLE_MODE_CHANGED") ) return true;
+	    	if( act.contains("android.os.action.LIGHT_DEVICE_IDLE_MODE_CHANGED") ) return true;
+	    	if( act.contains("com.google.android.gms.trustagent") ) return true;
+	    	if( act.contains("com.google.android.gms.trustlet") ) return true;
+	    	if( act.contains("com.google.android.gms.droidguard") ) return true;
+	    	if( act.contains("com.google.android.gms.deviceconnection") ) return true;
+	    }
+        //Slog.d(TAG, "checkKeep:(6) whitelist blocked pkg=" + packageName + ", cls=" + cls + ", act=" + act);
+	    return false;
+    }
+
     int getAppStartModeLocked(int uid, String packageName, int packageTargetSdk,
             int callingPid, boolean alwaysRestrict, boolean disabledOnly) {
         UidRecord uidRec = mActiveUids.get(uid);

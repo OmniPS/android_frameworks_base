@@ -296,6 +296,10 @@ public final class BroadcastQueue {
             if (DEBUG_BROADCAST_LIGHT) Slog.v(TAG_BROADCAST,
                     "Delivering to component " + r.curComponent
                     + ": " + r);
+
+            mService.tempWhitelistForPendingIntentLocked(r.callingPid,
+                r.callingUid, r.curReceiver.applicationInfo.uid, 10000, r.toString());
+
             mService.notifyPackageUse(r.intent.getComponent().getPackageName(),
                                       PackageManager.NOTIFY_PACKAGE_USE_BROADCAST_RECEIVER);
             app.thread.scheduleReceiver(new Intent(r.intent), r.curReceiver,
@@ -1252,9 +1256,12 @@ public final class BroadcastQueue {
 
             if (!skip) {
                 Slog.w(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
-                final int allowed = mService.getAppStartModeLocked(
+                int allowed = ActivityManager.APP_START_MODE_NORMAL;
+                if( !mService.isWhiteListedIntent(info.activityInfo.packageName,r.intent) ) {
+                    allowed = mService.getAppStartModeLocked(
                         info.activityInfo.applicationInfo.uid, info.activityInfo.packageName,
                         info.activityInfo.applicationInfo.targetSdkVersion, -1, true, false);
+                }
                 if (allowed != ActivityManager.APP_START_MODE_NORMAL) {
                     // We won't allow this receiver to be launched if the app has been
                     // completely disabled from launches, or it was not explicitly sent

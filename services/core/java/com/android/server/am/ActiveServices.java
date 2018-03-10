@@ -368,8 +368,12 @@ public final class ActiveServices {
             // Before going further -- if this app is not allowed to start services in the
             // background, then at this point we aren't going to let it period.
             Slog.w(TAG, "getAppStartModeLocked: service=" + service);
-            final int allowed = mAm.getAppStartModeLocked(r.appInfo.uid, r.packageName,
+
+            int allowed = ActivityManager.APP_START_MODE_NORMAL;
+            if( !mAm.isWhitelistedService(r.name.getPackageName(),r.name.getClassName(),null) ) {
+                    allowed = mAm.getAppStartModeLocked(r.appInfo.uid, r.packageName,
                     r.appInfo.targetSdkVersion, callingPid, false, false);
+            }
             if (allowed != ActivityManager.APP_START_MODE_NORMAL) {
                 Slog.w(TAG, "Background start not allowed: service "
                         + service + " to " + r.name.flattenToShortString()
