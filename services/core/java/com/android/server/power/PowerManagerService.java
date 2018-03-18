@@ -2195,12 +2195,22 @@ public final class PowerManagerService extends SystemService
                         if (anyUserActivity >= mLastWakeTime) {
                             nextTimeout = anyUserActivity + sleepTimeout;
                             if (now < nextTimeout) {
-                                mUserActivitySummary = USER_ACTIVITY_SCREEN_DREAM;
+                                if( mDisplayPowerRequest.useProximitySensor ) {
+                                    nextTimeout = now + 10000;
+                                    mUserActivitySummary = USER_ACTIVITY_SCREEN_DIM;
+                                } else {
+                                    mUserActivitySummary = USER_ACTIVITY_SCREEN_DREAM;
+                                }
                             }
                         }
                     } else {
-                        mUserActivitySummary = USER_ACTIVITY_SCREEN_DREAM;
-                        nextTimeout = -1;
+                        if( mDisplayPowerRequest.useProximitySensor ) {
+                            nextTimeout = now + 10000;
+                            mUserActivitySummary = USER_ACTIVITY_SCREEN_DIM;
+                        } else {
+                            mUserActivitySummary = USER_ACTIVITY_SCREEN_DREAM;
+                            nextTimeout = -1;
+                        }
                     }
                 }
 
@@ -2586,7 +2596,7 @@ public final class PowerManagerService extends SystemService
             mDisplayPowerRequest.useProximitySensor = shouldUseProximitySensorLocked();
             mDisplayPowerRequest.boostScreenBrightness = shouldBoostScreenBrightness();
 
-	    updateProximitySensorLocked();
+	        //updateProximitySensorLocked();
 
             updatePowerRequestFromBatterySaverPolicy(mDisplayPowerRequest);
 
@@ -2609,11 +2619,13 @@ public final class PowerManagerService extends SystemService
                 }
             }
 
-	    if( mPreviousDisplayPowerPolicy != mDisplayPowerRequest.policy ) onDisplayPowerPolicyChanging();
+	        if( mPreviousDisplayPowerPolicy != mDisplayPowerRequest.policy ) onDisplayPowerPolicyChanging();
+
             mDisplayReady = mDisplayManagerInternal.requestPowerState(mDisplayPowerRequest,
                     mRequestWaitForNegativeProximity);
             mRequestWaitForNegativeProximity = false;
-	    if( mPreviousDisplayPowerPolicy != mDisplayPowerRequest.policy ) onDisplayPowerPolicyChanged();
+
+	        if( mPreviousDisplayPowerPolicy != mDisplayPowerRequest.policy ) onDisplayPowerPolicyChanged();
 
             if ((dirty & DIRTY_QUIESCENT) != 0) {
                 sQuiescent = false;
@@ -2653,8 +2665,23 @@ public final class PowerManagerService extends SystemService
 
     }
 
+    boolean suspended = false;
     private void onDisplayPowerPolicyChanged() {
+        if( mDisplayPowerRequest.policy == DisplayPowerRequest.POLICY_OFF ) {
+            if( !suspended ) {
+                Slog.d(TAG, "onDisplayPowerPolicyChanged: suspend");
+                ((SystemSensorManager)mSensorManager).suspend(false);
+                suspended = true;
+            }
+        } else {
+            if( suspended ) {
+                Slog.d(TAG, "onDisplayPowerPolicyChanged: resume");
+                ((SystemSensorManager)mSensorManager).resume();
+                suspended = false;
+            }
+        }
     }
+
 
     private void updateScreenBrightnessBoostLocked(int dirty) {
         if ((dirty & DIRTY_SCREEN_BRIGHTNESS_BOOST) != 0) {
@@ -3046,13 +3073,25 @@ public final class PowerManagerService extends SystemService
 
         @Override
         public void onProximityPositive() {
-            if( DEBUG ) Slog.d(TAG, "DC:onProximityPositive");
+            synchronized (mLock) {
+                if( DEBUG ) Slog.d(TAG, "DC:onProximityPositive");
+                mProximityPositive = true;
+                mDirty |= DIRTY_PROXIMITY_POSITIVE;
+                updatePowerStateLocked();
+            }
         }
 
 
         @Override
         public void onProximityNegative() {
-            if( DEBUG ) Slog.d(TAG, "DC:onProximityNegative");
+            synchronized (mLock) {
+                if( DEBUG ) Slog.d(TAG, "DC:onProximityNegative");
+                mProximityPositive = false;
+                mDirty |= DIRTY_PROXIMITY_POSITIVE;
+                userActivityNoUpdateLocked(SystemClock.uptimeMillis(),
+                        PowerManager.USER_ACTIVITY_EVENT_OTHER, 0, Process.SYSTEM_UID);
+                updatePowerStateLocked();
+            }
         }
 
 
@@ -3102,8 +3141,17 @@ public final class PowerManagerService extends SystemService
     };
 
 
+    boolean prevProximity = false;
     private boolean shouldUseProximitySensorLocked() {
-        return !mIsVrModeEnabled && ((mWakeLockSummary & WAKE_LOCK_PROXIMITY_SCREEN_OFF) !=0 );
+        boolean useProximity = !mIsVrModeEnabled && ((mWakeLockSummary & WAKE_LOCK_PROXIMITY_SCREEN_OFF) !=0 );
+        if( prevProximity != useProximity ) {
+            if( DEBUG ) Slog.d(TAG,"useProximity:" + useProximity);
+            prevProximity = useProximity;
+            if( !useProximity && mProximityPositive ) {
+                mProximityPositive = false;
+            }
+        }
+        return useProximity;
     }
 
 
@@ -3649,19 +3697,27 @@ public final class PowerManagerService extends SystemService
                         disabled = !wakeLock.mUidState.mActive &&
                             wakeLock.mUidState.mProcState
                                     != ActivityManager.PROCESS_STATE_NONEXISTENT &&
-                            wakeLock.mUidState.mProcState > ActivityManager.PROCESS_STATE_RECEIVER;
+                            wakeLock.mUidState.mProcState > ActivityManager.PROCESS_STATE_RECEIVER;     
+                        if( disabled ) {
+                            if( DEBUG )  {
+                                if( wakeLock.mDisabled != disabled ) {
+                                    Slog.i(TAG, "WL: Non-existent app for " + wakeLock);    
+                                }
+                            }
+                        }
                     }
-                    if (mDeviceIdleMode) {
+                    if (!disabled && (mDeviceIdleMode || mLightDeviceIdleMode) ) {
                     //if (/*mDeviceIdleMode*/ !disabled /*&& mWakefulness != WAKEFULNESS_AWAKE */) {
                     // If we are in idle mode, we will also ignore all partial wake locks that are
                     // for application uids that are not whitelisted.
                         final UidState state = wakeLock.mUidState;
-                        if (Arrays.binarySearch(mDeviceIdleWhitelist, appid) < 0 &&
-                            Arrays.binarySearch(mDeviceIdleTempWhitelist, appid) < 0 &&
-			                appid >= Process.FIRST_APPLICATION_UID ) {
-                            /*state.mProcState != ActivityManager.PROCESS_STATE_NONEXISTENT &&
-                            state.mProcState > ActivityManager.PROCESS_STATE_FOREGROUND_SERVICE) { */
+                        if (Arrays.binarySearch(mDeviceIdleWhitelist, appid) < 0 ) {
                             disabled = true;
+                            if( DEBUG ) {
+                                if( wakeLock.mDisabled != disabled ) {
+                                    Slog.i(TAG, "WL: Not-whitelisted app for " + wakeLock);    
+                                }
+                            }
                         } else {
             		    //if( DEBUG ) Slog.i(TAG, "WL: whitelisted or system " + wakeLock);
 			            }
