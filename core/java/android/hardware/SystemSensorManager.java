@@ -123,6 +123,16 @@ public class SystemSensorManager extends SensorManager {
     }
 
 
+    public void suspend(boolean wakeup) {
+        nativeSetOperationParameter(
+                mNativeInstance, -1, wakeup ? 1:0, new float[1], new int[1]) ;
+    }
+
+    public void resume() {
+        nativeSetOperationParameter(
+                mNativeInstance, -2, 0, new float[1], new int[1]) ;
+    }
+
     /** @hide */
     @Override
     protected List<Sensor> getFullSensorList() {
@@ -167,6 +177,7 @@ public class SystemSensorManager extends SensorManager {
             String pkgName = mContext.getPackageName();
             Log.w(TAG, "Preventing " + pkgName + " from draining battery using " +
                        "significant motion sensor");
+            Log.w(TAG,"Here :", new Throwable());
             return true;
         }
 
@@ -198,10 +209,6 @@ public class SystemSensorManager extends SensorManager {
     @Override
     protected void unregisterListenerImpl(SensorEventListener listener, Sensor sensor) {
         android.util.SeempLog.record_sensor(382, sensor);
-        // Trigger Sensors should use the cancelTriggerSensor call.
-        if (sensor != null && sensor.getReportingMode() == Sensor.REPORTING_MODE_ONE_SHOT) {
-            return;
-        }
 
         synchronized (mSensorListeners) {
             SensorEventQueue queue = mSensorListeners.get(listener);
@@ -265,9 +272,7 @@ public class SystemSensorManager extends SensorManager {
     @Override
     protected boolean cancelTriggerSensorImpl(TriggerEventListener listener, Sensor sensor,
             boolean disable) {
-        if (sensor != null && sensor.getReportingMode() != Sensor.REPORTING_MODE_ONE_SHOT) {
-            return false;
-        }
+
         synchronized (mTriggerListeners) {
             TriggerEventQueue queue = mTriggerListeners.get(listener);
             if (queue != null) {
@@ -688,7 +693,7 @@ public class SystemSensorManager extends SensorManager {
                     maxBatchReportLatencyUs > 0 && enableSensor(sensor, delayUs, 0) != 0) {
                   removeSensor(sensor, false);
                   return false;
-                }
+                } 
             }
             return true;
         }
