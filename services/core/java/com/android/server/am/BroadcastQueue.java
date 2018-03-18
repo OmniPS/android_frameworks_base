@@ -39,6 +39,7 @@ import android.content.IntentSender;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -297,7 +298,7 @@ public final class BroadcastQueue {
                     "Delivering to component " + r.curComponent
                     + ": " + r);
 
-            mService.tempWhitelistForPendingIntentLocked(r.callingPid,
+            mService.tempWhitelistForPendingIntentLocked(-1,
                 r.callingUid, r.curReceiver.applicationInfo.uid, 10000, r.toString());
 
             mService.notifyPackageUse(r.intent.getComponent().getPackageName(),
@@ -612,6 +613,37 @@ public final class BroadcastQueue {
                     + " (uid " + r.callingUid + ")");
             skip = true;
         }
+
+
+
+            if (!skip) {
+                Slog.w(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
+                int allowed = ActivityManager.APP_START_MODE_NORMAL;
+                if( !mService.isWhiteListedIntent(filter.packageName,r.intent) ) {
+                    allowed = mService.getAppStartModeLocked(
+                        filter.receiverList.uid, filter.packageName,
+                        Build.VERSION_CODES.N, -1, true, false);
+                }
+                if (allowed != ActivityManager.APP_START_MODE_NORMAL) {
+                    // We won't allow this receiver to be launched if the app has been
+                    // completely disabled from launches, or it was not explicitly sent
+                    // to it and the app is in a state that should not receive it
+                    // (depending on how getAppStartModeLocked has determined that).
+                    if (allowed == ActivityManager.APP_START_MODE_DISABLED || allowed == ActivityManager.APP_START_MODE_DELAYED ) {
+                        Slog.w(TAG, "Background execution disabled: receiving " + r.intent);
+                        skip = true;
+                    } /*else if (((r.intent.getFlags()&Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND) != 0)
+                            || (r.intent.getComponent() == null
+                                && r.intent.getPackage() == null
+                                && ((r.intent.getFlags()
+                                        & Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND) == 0)
+                                && !isSignaturePerm(r.requiredPermissions))) {
+                        mService.addBackgroundCheckViolationLocked(r.intent.getAction(),filter.packageName);
+                        Slog.w(TAG, "Background execution not allowed: receiving "  + r.intent);
+                        skip = true;
+                    } */
+                }
+            }
 
         if (!mService.mIntentFirewall.checkBroadcast(r.intent, r.callingUid,
                 r.callingPid, r.resolvedType, filter.receiverList.uid)) {
@@ -1254,6 +1286,7 @@ public final class BroadcastQueue {
             ProcessRecord app = mService.getProcessRecordLocked(targetProcess,
                     info.activityInfo.applicationInfo.uid, false);
 
+            
             if (!skip) {
                 Slog.w(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
                 int allowed = ActivityManager.APP_START_MODE_NORMAL;
@@ -1272,7 +1305,7 @@ public final class BroadcastQueue {
                                 + r.intent + " to "
                                 + component.flattenToShortString());
                         skip = true;
-                    } else if (((r.intent.getFlags()&Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND) != 0)
+                    } /* else if (((r.intent.getFlags()&Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND) != 0)
                             || (r.intent.getComponent() == null
                                 && r.intent.getPackage() == null
                                 && ((r.intent.getFlags()
@@ -1284,7 +1317,7 @@ public final class BroadcastQueue {
                                 + r.intent + " to "
                                 + component.flattenToShortString());
                         skip = true;
-                    }
+                    } */
                 }
             }
 

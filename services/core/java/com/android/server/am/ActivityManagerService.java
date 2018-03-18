@@ -411,6 +411,7 @@ import com.android.server.statusbar.StatusBarManagerInternal;
 import com.android.server.vr.VrManagerInternal;
 import com.android.server.wm.PinnedStackWindowController;
 import com.android.server.wm.WindowManagerService;
+import com.android.server.power.PowerManagerService;
 
 import java.text.SimpleDateFormat;
 import org.xmlpull.v1.XmlPullParser;
@@ -8594,6 +8595,29 @@ public class ActivityManagerService extends IActivityManager.Stub
             Slog.i(TAG, "AppOp " + uid + "/" + packageName + " bg appop " + appop);
         }
 
+        if( appop == AppOpsManager.MODE_IGNORED ) {
+            Slog.i(TAG, "App " + uid + "/" + packageName + " explicitly restricted");
+            return ActivityManager.APP_START_MODE_DELAYED;
+        }
+
+        // Non-persistent but background whitelisted?
+        if (uidOnBackgroundWhitelist(uid)) {
+            if (DEBUG_BACKGROUND_CHECK) {
+                Slog.i(TAG, "App " + uid + "/" + packageName
+                        + " on background whitelist; not restricted in background");
+            }
+            return ActivityManager.APP_START_MODE_NORMAL;
+        }
+
+        // Is this app on the battery whitelist?
+        if (isOnDeviceIdleWhitelistLocked(uid)) {
+            if (DEBUG_BACKGROUND_CHECK) {
+                Slog.i(TAG, "App " + uid + "/" + packageName
+                        + " on idle whitelist; not restricted in background");
+            }
+            return ActivityManager.APP_START_MODE_NORMAL;
+        }
+
         // Apps that target O+ are always subject to background check
         if (packageTargetSdk >= Build.VERSION_CODES.O) {
             if (DEBUG_BACKGROUND_CHECK) {
@@ -8631,8 +8655,10 @@ public class ActivityManagerService extends IActivityManager.Stub
                         + " is persistent; not restricted in background");
             }
             return ActivityManager.APP_START_MODE_NORMAL;
+        
         }
 
+        /*
         // Non-persistent but background whitelisted?
         if (uidOnBackgroundWhitelist(uid)) {
             if (DEBUG_BACKGROUND_CHECK) {
@@ -8650,6 +8676,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
             return ActivityManager.APP_START_MODE_NORMAL;
         }
+        */
 
         // None of the service-policy criteria apply, so we apply the common criteria
         return appRestrictedInBackgroundLocked(uid, packageName, packageTargetSdk);
@@ -8808,10 +8835,13 @@ public class ActivityManagerService extends IActivityManager.Stub
                     if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg=" + packageName + " not disabled");
                     return ActivityManager.APP_START_MODE_NORMAL;
                 }
+
+                        // ? appRestrictedInBackgroundLocked(uid, packageName, packageTargetSdk)
+
                 final int startMode = (alwaysRestrict)
-                        ? appRestrictedInBackgroundLocked(uid, packageName, packageTargetSdk)
-                        : appServicesRestrictedInBackgroundLocked(uid, packageName,
-                                packageTargetSdk);
+                        ? appServicesRestrictedInBackgroundLocked(uid, packageName, packageTargetSdk)
+                        : appServicesRestrictedInBackgroundLocked(uid, packageName, packageTargetSdk);
+
                 if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid
                         + " pkg=" + packageName + " startMode=" + startMode
                         + " onwhitelist=" + isOnDeviceIdleWhitelistLocked(uid));
@@ -8819,7 +8849,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                     // This is an old app that has been forced into a "compatible as possible"
                     // mode of background check.  To increase compatibility, we will allow other
                     // foreground apps to cause its services to start.
-                    if (callingPid >= 0) {
+                    if (callingPid >= 0 && PowerManagerService.getGmsUid() !=uid ) {
                         ProcessRecord proc;
                         synchronized (mPidsSelfLocked) {
                             proc = mPidsSelfLocked.get(callingPid);
@@ -23462,21 +23492,23 @@ public class ActivityManagerService extends IActivityManager.Stub
                     + targetUid + ", " + duration + ")");
         }
 
-        synchronized (mPidsSelfLocked) {
-            final ProcessRecord pr = mPidsSelfLocked.get(callerPid);
-            if (pr == null) {
-                Slog.w(TAG, "tempWhitelistForPendingIntentLocked() no ProcessRecord for pid "
+        if( callerPid != -1 ) {
+            synchronized (mPidsSelfLocked) {
+                final ProcessRecord pr = mPidsSelfLocked.get(callerPid);
+                if (pr == null) {
+                    Slog.w(TAG, "tempWhitelistForPendingIntentLocked() no ProcessRecord for pid "
                         + callerPid);
-                return;
-            }
-            if (!pr.whitelistManager) {
-                if (checkPermission(CHANGE_DEVICE_IDLE_TEMP_WHITELIST, callerPid, callerUid)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    if (DEBUG_WHITELISTS) {
-                        Slog.d(TAG, "tempWhitelistForPendingIntentLocked() for target " + targetUid
-                                + ": pid " + callerPid + " is not allowed");
-                    }
                     return;
+                }
+                if (!pr.whitelistManager) {
+                    if (checkPermission(CHANGE_DEVICE_IDLE_TEMP_WHITELIST, callerPid, callerUid)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        if (DEBUG_WHITELISTS) {
+                            Slog.d(TAG, "tempWhitelistForPendingIntentLocked() for target " + targetUid
+                                    + ": pid " + callerPid + " is not allowed");
+                        }
+                        return;
+                    }
                 }
             }
         }
