@@ -106,8 +106,8 @@ class AlarmManagerService extends SystemService {
     static final boolean DEBUG_ALARM_CLOCK = localLOGV || false;
     static final boolean DEBUG_LISTENER_CALLBACK = localLOGV || false;
     static final boolean DEBUG_WAKELOCK = localLOGV || false;
-    static final boolean RECORD_ALARMS_IN_HISTORY = true;
-    static final boolean RECORD_DEVICE_IDLE_ALARMS = true;
+    static final boolean RECORD_ALARMS_IN_HISTORY = false;
+    static final boolean RECORD_DEVICE_IDLE_ALARMS = false;
     static final int ALARM_EVENT = 1;
     static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -1174,11 +1174,11 @@ class AlarmManagerService extends SystemService {
             blockTag = callingPackage + ":" + operation.getTag("");
 	    }   
 
-	    Slog.e(TAG, "Alarm: type=" + type + ", pkg=" + callingPackage + ", uid=" + callingUid + ", tag=" + blockTag + ", " + flags + ", alarmClock=" + alarmClock + ", ws=" + workSource );
+        if (localLOGV) Slog.v(TAG, "Alarm: type=" + type + ", pkg=" + callingPackage + ", uid=" + callingUid + ", tag=" + blockTag + ", " + flags + ", alarmClock=" + alarmClock + ", ws=" + workSource );
 
         if (operation != mTimeTickSender && alarmClock == null && ( type == AlarmManager.RTC_WAKEUP || type == AlarmManager.ELAPSED_REALTIME_WAKEUP ) ) {
 
-            Slog.e(TAG, "RTC Alarm: " + type + " " + blockTag);
+            if (localLOGV)  Slog.v(TAG, "RTC Alarm: " + type + " " + blockTag);
 
  	        int appid = 0;
 
@@ -1210,7 +1210,7 @@ class AlarmManagerService extends SystemService {
 	        }
 
 	        if( blockAlarm ) {
-                Slog.e(TAG, "RTC Alarm: (blocked) " + type + " " + blockTag);
+                if (localLOGV) Slog.v(TAG, "RTC Alarm: (blocked) " + type + " " + blockTag);
 
                 if (type == AlarmManager.RTC_WAKEUP) {
                     type = AlarmManager.RTC;
@@ -2733,7 +2733,7 @@ class AlarmManagerService extends SystemService {
     void setWakelockWorkSource(PendingIntent pi, WorkSource ws, int type, String tag,
             int knownUid, boolean first) {
         try {
-            final boolean unimportant = pi == mTimeTickSender;
+            final boolean unimportant = false; //pi == mTimeTickSender;
             mWakeLock.setUnimportantForLogging(unimportant);
             if (first || mLastWakeLockUnimportantForLogging) {
                 mWakeLock.setHistoryTag(tag);
