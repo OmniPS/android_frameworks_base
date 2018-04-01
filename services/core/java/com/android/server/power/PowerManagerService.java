@@ -124,7 +124,7 @@ public final class PowerManagerService extends SystemService
         implements Watchdog.Monitor {
     private static final String TAG = "PowerManagerService";
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private static final boolean DEBUG_SPEW = DEBUG && false;
 
     // Message: Sent when a user activity timeout occurs to update the power state.
@@ -3258,18 +3258,19 @@ public final class PowerManagerService extends SystemService
             // On some hardware it may not be safe to suspend because the proximity
             // sensor may not be correctly configured as a wake-up source.
 
-            if (!mReaderMode &&( (!mDisplayPowerRequest.useProximitySensor && !mProximityPositive)
-                    || !mSuspendWhenScreenOffDueToProximityConfig) ) {
+            if ((mDisplayPowerRequest.useProximitySensor && !mProximityPositive) || !mSuspendWhenScreenOffDueToProximityConfig)  {
                 return true;
             }
-            if( mReaderMode &&  mDisplayPowerRequest.useProximitySensor && !mProximityPositive ) {
+            
+
+            if (!mReaderMode && !mDisplayPowerRequest.useProximitySensor) {
                 return true;
             }
 
             mHandler.removeMessages(MSG_UPDATE_POWERSTATE);
 
             final long now = SystemClock.uptimeMillis();
-            if( mReaderMode && ( now - mLastUserActivityTime < 2000 ) ) {
+            if( mReaderMode && !mDisplayPowerRequest.useProximitySensor && ( now - mLastUserActivityTime < 2000 ) ) {
                 Message msg = mHandler.obtainMessage(MSG_UPDATE_POWERSTATE);
                 msg.setAsynchronous(true);
                 mHandler.sendMessageAtTime(msg, mLastUserActivityTime + 2000);
