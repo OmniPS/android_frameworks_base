@@ -58,6 +58,7 @@ import com.android.internal.os.TransferPipe;
 import com.android.internal.util.FastPrintWriter;
 import com.android.server.am.ActivityManagerService.ItemMatcher;
 import com.android.server.am.ActivityManagerService.NeededUriGrants;
+import com.android.server.power.PowerManagerService;
 
 import android.app.ActivityManager;
 import android.app.AppGlobals;
@@ -96,7 +97,7 @@ public final class ActiveServices {
     private static final boolean DEBUG_DELAYED_SERVICE = DEBUG_SERVICE;
     private static final boolean DEBUG_DELAYED_STARTS = DEBUG_DELAYED_SERVICE;
 
-    private static final boolean LOG_SERVICE_START_STOP = false;
+    private static final boolean LOG_SERVICE_START_STOP = true;
 
     // How long we wait for a service to finish executing.
     static final int SERVICE_TIMEOUT = 20*1000;
@@ -106,7 +107,7 @@ public final class ActiveServices {
 
     // How long the startForegroundService() grace period is to get around to
     // calling startForeground() before we ANR + stop it.
-    static final int SERVICE_START_FOREGROUND_TIMEOUT = 5*1000;
+    static final int SERVICE_START_FOREGROUND_TIMEOUT = 15*1000;
 
     final ActivityManagerService mAm;
 
@@ -300,7 +301,7 @@ public final class ActiveServices {
         } catch(RuntimeException e) {
         }
         mMaxStartingBackground = maxBg > 0
-                ? maxBg : ActivityManager.isLowRamDeviceStatic() ? 1 : 8;
+                ? maxBg : ActivityManager.isLowRamDeviceStatic() ? 1 : 16;
     }
 
     ServiceRecord getServiceByNameLocked(ComponentName name, int callingUser) {
@@ -374,7 +375,7 @@ public final class ActiveServices {
             Slog.w(TAG, "getAppStartModeLocked: service=" + service);
 
             int allowed = ActivityManager.APP_START_MODE_NORMAL;
-            if( !mAm.isWhitelistedService(r.name.getPackageName(),r.name.getClassName(),null) ) {
+            if( !mAm.isWhiteListedService(r.name.getPackageName(),r.name.getClassName()) ) {
                     allowed = mAm.getAppStartModeLocked(r.appInfo.uid, r.packageName,
                     r.appInfo.targetSdkVersion, callingPid, false, false);
             }
@@ -621,25 +622,39 @@ public final class ActiveServices {
         return 0;
     }
 
-    void stopInBackgroundLocked(int uid) {
+    void stopInBackgroundLocked(int uid, boolean force) {
         // Stop all services associated with this uid due to it going to the background
         // stopped state.
+
+        //if( PowerManagerService.getGmsUid() == uid ) {
+        //    return;
+        //}
+
+        if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Stop services for uid=" + uid);
+
         ServiceMap services = mServiceMap.get(UserHandle.getUserId(uid));
         ArrayList<ServiceRecord> stopping = null;
         if (services != null) {
             for (int i=services.mServicesByName.size()-1; i>=0; i--) {
                 ServiceRecord service = services.mServicesByName.valueAt(i);
-                if (service.appInfo.uid == uid && service.startRequested) {
-                    Slog.w(TAG, "getAppStartModeLocked: stopInBackgroundLocked service=" + service);
-                    if (mAm.getAppStartModeLocked(service.appInfo.uid, service.packageName,
-                            service.appInfo.targetSdkVersion, -1, false, false)
-                            != ActivityManager.APP_START_MODE_NORMAL) {
+                if (service.appInfo.uid == uid /*&& service.startRequested */) {
+                    if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Checkservice service: " + service);
+                    //Slog.w(TAG, "getAppStartModeLocked: stopInBackgroundLocked service=" + service);
+                    //if (mAm.getAppStartModeLocked(service.appInfo.uid, service.packageName,
+                    //        service.appInfo.targetSdkVersion, -1, false, false)
+                    //        != ActivityManager.APP_START_MODE_NORMAL) {
+
+
+                        if( mAm.isWhiteListedService(service.name.getPackageName(),service.name.getClassName()) ) {
+                            if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Whitelisted service: " + service);
+                            continue;
+                        }
                         if (stopping == null) {
                             stopping = new ArrayList<>();
                         }
                         String compName = service.name.flattenToShortString();
                         EventLogTags.writeAmStopIdleService(service.appInfo.uid, compName);
-                        StringBuilder sb = new StringBuilder(64);
+                        StringBuilder sb = new StringBuilder(256);
                         sb.append("Stopping service due to app idle: ");
                         UserHandle.formatUid(sb, service.appInfo.uid);
                         sb.append(" ");
@@ -647,17 +662,26 @@ public final class ActiveServices {
                                 - SystemClock.elapsedRealtime(), sb);
                         sb.append(" ");
                         sb.append(compName);
-                        Slog.w(TAG, sb.toString());
+                        if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", sb.toString());
                         stopping.add(service);
-                    }
+                    //}
                 }
             }
             if (stopping != null) {
                 for (int i=stopping.size()-1; i>=0; i--) {
                     ServiceRecord service = stopping.get(i);
                     service.delayed = false;
-                    services.ensureNotStartingBackgroundLocked(service);
-                    stopServiceLocked(service);
+                    try {
+                        services.ensureNotStartingBackgroundLocked(service);
+                        if( force ) {
+                            Slog.v(TAG + "_force_stop_service", "Service: " + service);
+                            bringDownServiceLocked(service);
+                        } else {
+                            stopServiceLocked(service);
+                        }
+                    } catch( Exception e ) {
+                        Slog.e(TAG + "_check_stop_service","Error bringing down service.", e );
+                    }
                 }
             }
         }
@@ -1886,6 +1910,9 @@ public final class ActiveServices {
     private final boolean scheduleServiceRestartLocked(ServiceRecord r, boolean allowCancel) {
         boolean canceled = false;
 
+
+        Slog.v(TAG,"Schedule restart of :" + r);
+
         if (mAm.isShuttingDownLocked()) {
             Slog.w(TAG, "Not scheduling restart of crashed service " + r.shortName
                     + " - system is shutting down");
@@ -2475,10 +2502,12 @@ public final class ActiveServices {
 
     private final void bringDownServiceIfNeededLocked(ServiceRecord r, boolean knowConn,
             boolean hasConn) {
-        //Slog.i(TAG, "Bring down service:");
+
+        if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "Bring down service if needed:" + r);
         //r.dump("  ");
 
         if (isServiceNeededLocked(r, knowConn, hasConn)) {
+            if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "Service needed knowConn=" + knowConn + ", hasConn=" + hasConn);
             return;
         }
 
@@ -2491,7 +2520,8 @@ public final class ActiveServices {
     }
 
     private final void bringDownServiceLocked(ServiceRecord r) {
-        //Slog.i(TAG, "Bring down service:");
+        //if (DEBUG_SERVICE) 
+        Slog.i(TAG_SERVICE, "Bring down service:" + r);
         //r.dump("  ");
 
         // Report to all of the connections that the service is no longer
@@ -2516,23 +2546,26 @@ public final class ActiveServices {
         // Tell the service that it has been unbound.
         if (r.app != null && r.app.thread != null) {
             for (int i=r.bindings.size()-1; i>=0; i--) {
-                IntentBindRecord ibr = r.bindings.valueAt(i);
-                if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "Bringing down binding " + ibr
-                        + ": hasBound=" + ibr.hasBound);
-                if (ibr.hasBound) {
+                //if (ibr.hasBound) {
                     try {
-                        bumpServiceExecutingLocked(r, false, "bring down unbind");
-                        mAm.updateOomAdjLocked(r.app, true);
-                        ibr.hasBound = false;
-                        ibr.requested = false;
-                        r.app.thread.scheduleUnbindService(r,
+                        IntentBindRecord ibr = r.bindings.valueAt(i);
+                        if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "Bringing down binding " + ibr
+                                + ": hasBound=" + ibr.hasBound);
+
+                        if (ibr.hasBound) {
+                            bumpServiceExecutingLocked(r, false, "bring down unbind");
+                            mAm.updateOomAdjLocked(r.app, true);
+                            ibr.hasBound = false;
+                            ibr.requested = false;
+                            r.app.thread.scheduleUnbindService(r,
                                 ibr.intent.getIntent());
+                        }
                     } catch (Exception e) {
                         Slog.w(TAG, "Exception when unbinding service "
                                 + r.shortName, e);
                         serviceProcessGoneLocked(r);
                     }
-                }
+                //}
             }
         }
 
@@ -3406,6 +3439,10 @@ public final class ActiveServices {
             long nextTime = 0;
             for (int i=proc.executingServices.size()-1; i>=0; i--) {
                 ServiceRecord sr = proc.executingServices.valueAt(i);
+                if( sr == null  ) {
+                    Slog.w(TAG, "Service already stopped for " + proc);
+                    return;
+                }
                 if (sr.executingStart < maxTime) {
                     timeout = sr;
                     break;

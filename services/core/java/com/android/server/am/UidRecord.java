@@ -40,6 +40,8 @@ public final class UidRecord {
     boolean setWhitelist;
     boolean idle;
     boolean setIdle;
+    boolean disabledIdle;
+    boolean disabledBackground;
     int numProcs;
 
     /**

@@ -617,13 +617,16 @@ public final class BroadcastQueue {
 
 
             if (!skip) {
-                Slog.w(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
+                if (DEBUG_BROADCAST) Slog.v(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
                 int allowed = ActivityManager.APP_START_MODE_NORMAL;
                 if( !mService.isWhiteListedIntent(filter.packageName,r.intent) ) {
                     allowed = mService.getAppStartModeLocked(
                         filter.receiverList.uid, filter.packageName,
                         Build.VERSION_CODES.N, -1, true, false);
+                } else {
+                    if (DEBUG_BROADCAST) Slog.v(TAG, "Whitelisted: from=" + r.callerPackage + " receiving intent=" + r.intent);
                 }
+    
                 if (allowed != ActivityManager.APP_START_MODE_NORMAL) {
                     // We won't allow this receiver to be launched if the app has been
                     // completely disabled from launches, or it was not explicitly sent
