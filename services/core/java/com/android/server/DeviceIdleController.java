@@ -110,7 +110,7 @@ public class DeviceIdleController extends SystemService
     private static final String SYSTEM_PROPERTY_PM_DEEP_IDLE = "persist.pm.deep_idle";
     private static final String SYSTEM_PROPERTY_PM_FREE_NET = "persist.pm.free_net";
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private static final boolean COMPRESS_TIME = false;
 
@@ -829,10 +829,10 @@ public class DeviceIdleController extends SystemService
                 MAX_IDLE_TIMEOUT = 12*60*60*1000L;
                 IDLE_FACTOR = 2.0F;
                 MIN_TIME_TO_ALARM = 0;
-                MAX_TEMP_APP_WHITELIST_DURATION = 5000L;
-                MMS_TEMP_APP_WHITELIST_DURATION = 5000L;
-                SMS_TEMP_APP_WHITELIST_DURATION = 5000L;
-                NOTIFICATION_WHITELIST_DURATION = 5000L;
+                MAX_TEMP_APP_WHITELIST_DURATION = 15000L;
+                MMS_TEMP_APP_WHITELIST_DURATION = 15000L;
+                SMS_TEMP_APP_WHITELIST_DURATION = 15000L;
+                NOTIFICATION_WHITELIST_DURATION = 15000L;
 
 		/*
                 LIGHT_IDLE_AFTER_INACTIVE_TIMEOUT = mParser.getLong(
