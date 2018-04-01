@@ -44,6 +44,7 @@
     <string name="qs_menu_item_rows_three">3</string>
     <string name="qs_menu_item_rows_four">4</string>
     <string name="qs_menu_item_scroll">Quickbar scroll</string>
+    <string name="qs_menu_item_qs_columns">Quickbar columns</string>
 
     <string name="tuner_quick_settings">Quick settings</string>
     <string name="tuner_show_brightness_mode">Show brightness mode switch</string>
@@ -123,8 +124,8 @@
     <string name="keycode">Keycode</string>
     <string name="no_home_title">No home button found</string>
     <string name="no_home_message">A home button is required to be able to navigate this device. Please add a home button before saving.</string>
-    <string name="clipboard_description">The Clipboard allows items to be dragged directly to the clipboard. Items can also be dragged directly out of the clipboard when present.</string>
-    <string name="keycode_description">Keycode buttons allow keyboard keys to be added to the Navigation Bar. When pressed they emulate the selected keyboard key. First the key must be selected for the button, followed by an image to be shown on the button.</string>
+    <string name="clipboard_description">The clipboard allows items to be dragged directly to the clipboard. Items can also be dragged directly out of the clipboard when present.</string>
+    <string name="keycode_description">Keycode buttons allow keyboard keys to be added to the navigation bar. When pressed they emulate the selected keyboard key. First the key must be selected for the button, followed by an image to be shown on the button.</string>
     <string name="start">Start</string>
     <string name="center">Center</string>
     <string name="end">End</string>
@@ -138,7 +139,7 @@
     <string name="left">Left</string>
     <string name="right">Right</string>
     <string name="navbar_editor_title">Editor</string>
-    <string name="navbar_editor_summary">Configure navigaton bar</string>
+    <string name="navbar_editor_summary">Configure navigation bar</string>
 
     <!-- key disable QS Tile -->
     <string name="quick_settings_key_disable_label">Disable keys</string>
@@ -156,4 +157,20 @@
     <string name="qs_show_battery">Show battery</string>
     <string name="qs_show_carrier">Show carrier names</string>
     <string name="qs_show_clock">Show clock</string>
+    <string name="qs_show_mini">Mini mode</string>
+    <string name="qs_header">Header</string>
+
+    <string name="quick_settings_google_assist_label">Assistant</string>
+    <string name="quick_settings_google_voice_assist_label">Voice assist</string>
+    <string name="quick_settings_google_now_label">Google feed</string>
+
+    <!-- Sync QS tile -->
+    <string name="quick_settings_sync_label">Sync</string>
+    <string name="accessibility_quick_settings_sync_changed_off">Sync turned off.</string>
+    <string name="accessibility_quick_settings_sync_changed_on">Sync turned on.</string>
+
+    <!-- Recents Panel -->
+    <!-- The text for the button in the notification window-shade that clears
+         all of the currently visible notifications. [CHAR LIMIT=10]-->
+    <string name="clear_recents">Close all recent</string>
 </resources>
