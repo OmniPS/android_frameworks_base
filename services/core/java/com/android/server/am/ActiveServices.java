@@ -674,7 +674,7 @@ public final class ActiveServices {
                     try {
                         services.ensureNotStartingBackgroundLocked(service);
                         if( force ) {
-                            Slog.v(TAG + "_force_stop_service", "Service: " + service);
+                            Slog.v(TAG + "_force_stop_service", "Service: " + service.name.getClassName());
                             bringDownServiceLocked(service);
                         } else {
                             stopServiceLocked(service);
@@ -3452,16 +3452,20 @@ public final class ActiveServices {
                 }
             }
             if (timeout != null && mAm.mLruProcesses.contains(proc)) {
-                Slog.w(TAG, "Timeout executing service: " + timeout);
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new FastPrintWriter(sw, false, 1024);
-                pw.println(timeout);
-                timeout.dump(pw, "    ");
-                pw.close();
-                mLastAnrDump = sw.toString();
-                mAm.mHandler.removeCallbacks(mLastAnrDumpClearer);
-                mAm.mHandler.postDelayed(mLastAnrDumpClearer, LAST_ANR_LIFETIME_DURATION_MSECS);
-                anrMessage = "executing service " + timeout.shortName;
+                if( mAm.mDeviceIdleMode || mAm.mLightDeviceIdleMode  ) {
+                    Slog.w(TAG, "Timeout while Idle executing service: " + timeout);
+                } else {
+                    Slog.w(TAG, "Timeout executing service: " + timeout);
+                    StringWriter sw = new StringWriter();
+                    PrintWriter pw = new FastPrintWriter(sw, false, 1024);
+                    pw.println(timeout);
+                    timeout.dump(pw, "    ");
+                    pw.close();
+                    mLastAnrDump = sw.toString();
+                    mAm.mHandler.removeCallbacks(mLastAnrDumpClearer);
+                    mAm.mHandler.postDelayed(mLastAnrDumpClearer, LAST_ANR_LIFETIME_DURATION_MSECS);
+                    anrMessage = "executing service " + timeout.shortName;
+                }
             } else {
                 Message msg = mAm.mHandler.obtainMessage(
                         ActivityManagerService.SERVICE_TIMEOUT_MSG);
