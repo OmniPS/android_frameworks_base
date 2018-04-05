@@ -8806,10 +8806,24 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     boolean isWhiteListedService(String packageName,String cls) {
 
+        if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG,"Service packageName=" + packageName + ", cls=" + cls);
+
 	    //if( packageName == null ) return true;
         if( cls != null ) {
+                if( cls.startsWith("com.android.") ) return true;
 		        if( cls.contains("com.google.android.gms.auth") ) return true;
 		        if( cls.contains("com.google.android.gms.gcm") ) return true;
+
+
+		        if( cls.equals("com.google.android.gms.thunderbird.OutgoingSmsListenerService") ) return true;
+		        if( cls.equals("com.google.android.gms.chimera.PersistentBoundBrokerService") ) return true;
+		        if( cls.equals("com.google.android.gms.chimera.GmsBoundBrokerService") ) return true;
+		        if( cls.equals("com.google.android.gms.pseudonymous.service.PseudonymousIdService") ) return true;
+		        if( cls.equals("com.google.android.gms.phenotype.service.PhenotypeService") ) return true;
+		        if( cls.equals("com.google.android.gms.chimera.PersistentIntentOperationService") ) return true;
+		        if( cls.equals("com.google.android.gms.backup.BackupTransportService") ) return true;
+		        if( cls.equals("com.google.android.contextmanager.service.ContextManagerService") ) return true;
+		        if( cls.equals("com.google.android.gms.wearable.service.WearableService") ) return true;
 
         		if( cls.contains("com.google.android.gms.config.ConfigService") ) return true;
         		if( cls.contains("com.google.android.gms.deviceconnection") ) return true;
@@ -8818,10 +8832,39 @@ public class ActivityManagerService extends IActivityManager.Stub
         		if( cls.contains("com.google.android.gms.droidguard") ) return true;
         		if( cls.contains("com.google.android.gms.trustagent") ) return true;
 		        if( cls.contains("com.google.android.gms.chimera.GmsIntentOperationService") ) return true;
-                if( cls.contains(".auth.trustagent") ) return true;
+                if( cls.contains(".auth.") ) return true;
                 if( cls.contains(".trustagent") ) return true;
                 if( cls.contains(".trustlet") ) return true;
                 if( cls.contains(".droidguard") ) return true;
+
+/*
+
+com.google.android.gms.thunderbird.OutgoingSmsListenerService
+com.google.android.gms.chimera.PersistentBoundBrokerService
+com.google.android.gms.chimera.GmsBoundBrokerService
+com.google.android.gms.pseudonymous.service.PseudonymousIdService
+com.google.android.gms.phenotype.service.PhenotypeService
+com.google.android.gms.chimera.PersistentIntentOperationService
+com.google.android.gms.backup.BackupTransportService
+com.google.android.contextmanager.service.ContextManagerService
+com.google.android.gms.wearable.service.WearableService
+
+com.android.cellbroadcastreceiver
+com.android.keychain
+com.google.android.gms/.config.ConfigService
+android/com.android.server.pm.BackgroundDexOptService
+com.google.android.gms/.trustagent.api.bridge.TrustAgentBridgeService
+.auth.account.be.channelid.ChannelBindingStateIntentService
+.auth.api.credentials.sync.CredentialSyncReceiverService    
+.auth.easyunlock.authorization.InitializerIntentService
+.auth.authzen.GcmReceiverService
+.chimera.GmsInternalBoundBrokerService
+.auth.account.authenticator.GoogleAccountAuthenticatorService
+.matchstick.net.MessagingService
+.chimera.GmsInternalBoundBrokerService
+.auth.GetToken
+*/
+
         }
 
 
