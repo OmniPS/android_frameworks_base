@@ -142,6 +142,7 @@ class BatteryExternalStatsWorker implements BatteryStatsImpl.ExternalStatsSync {
     }
 
     private Future<?> scheduleSyncLocked(String reason, int flags) {
+        //Slog.d(TAG, "scheduleSyncLocked reason=" + reason + ", flags=" + flags + " here", new Throwable());
         if (mExecutorService.isShutdown()) {
             return CompletableFuture.failedFuture(new IllegalStateException("worker shutdown"));
         }
@@ -243,13 +244,14 @@ class BatteryExternalStatsWorker implements BatteryStatsImpl.ExternalStatsSync {
 
             if (mTelephony != null) {
                 modemReceiver = new SynchronousResultReceiver("telephony");
-                mTelephony.requestModemActivityInfo(modemReceiver);
+                //Slog.d(TAG, "requestModemActivityInfo here", new Throwable());
+                //mTelephony.requestModemActivityInfo(modemReceiver);
             }
         }
 
         final WifiActivityEnergyInfo wifiInfo = awaitControllerInfo(wifiReceiver);
         final BluetoothActivityEnergyInfo bluetoothInfo = awaitControllerInfo(bluetoothReceiver);
-        final ModemActivityInfo modemInfo = awaitControllerInfo(modemReceiver);
+        final ModemActivityInfo modemInfo = null;// awaitControllerInfo(modemReceiver);
 
         synchronized (mStats) {
             mStats.addHistoryEventLocked(
