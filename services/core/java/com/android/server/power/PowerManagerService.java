@@ -241,6 +241,10 @@ public final class PowerManagerService extends SystemService
 
     private static final String SYSTEM_PROPERTY_PM_FORCE_GMS = "persist.pm.force_gms";
 
+    private static final String SYSTEM_PROPERTY_PM_KTHREAD_FP = "persist.pm.kthread_fp";
+    private static final String SYSTEM_PROPERTY_PM_KTHREAD_RM = "persist.pm.kthread_rm";
+    private static final String SYSTEM_PROPERTY_PM_KTHREAD_SO = "persist.pm.kthread_so";
+
     private static final String SYSTEM_PROPERTY_PM_BON_MIN = "persist.pm.bon_min";
     private static final String SYSTEM_PROPERTY_PM_BON_MAX = "persist.pm.bon_max";
 
@@ -337,6 +341,10 @@ public final class PowerManagerService extends SystemService
 
     private boolean mForceGMS;    
 
+    private int mThreadSchedulerFullPower = 0;    
+    private int mThreadSchedulerReaderMode = 1;    
+    private int mThreadSchedulerScreenOff = 2;    
+
     private boolean mFollowProximityButtonOn;
     private boolean mFollowProximityButtonOff;
 
@@ -361,6 +369,11 @@ public final class PowerManagerService extends SystemService
 
     // Timestamp of last interactive power hint.
     private long mLastInteractivePowerHintTime;
+
+    // Timestamp of last system activity (vsync, etc... ).
+    private long mLastSystemActivityTime;
+    private long mLastLaunchTime;
+    private long mSystemActive;
 
     // Timestamp of the last screen brightness boost.
     private long mLastScreenBrightnessBoostTime;
@@ -774,20 +787,24 @@ public final class PowerManagerService extends SystemService
             sQuiescent = SystemProperties.get(SYSTEM_PROPERTY_QUIESCENT, "0").equals("1");
 
             mFollowProximityOn = SystemProperties.get(SYSTEM_PROPERTY_PM_PROXIMITY_ON, "0").equals("1");
-	    mFollowProximityButtonOn = SystemProperties.get(SYSTEM_PROPERTY_PM_PROXIMITY_BON, "0").equals("1");
-	    mFollowProximityButtonOff = SystemProperties.get(SYSTEM_PROPERTY_PM_PROXIMITY_BOFF, "0").equals("1");
+	        mFollowProximityButtonOn = SystemProperties.get(SYSTEM_PROPERTY_PM_PROXIMITY_BON, "0").equals("1");
+	        mFollowProximityButtonOff = SystemProperties.get(SYSTEM_PROPERTY_PM_PROXIMITY_BOFF, "0").equals("1");
 
 
-	    mProximityButtonMin = SystemProperties.getInt(SYSTEM_PROPERTY_PM_BON_MIN, 500);
-	    mProximityButtonMax = SystemProperties.getInt(SYSTEM_PROPERTY_PM_BON_MAX, 2000);
+	        mProximityButtonMin = SystemProperties.getInt(SYSTEM_PROPERTY_PM_BON_MIN, 500);
+	        mProximityButtonMax = SystemProperties.getInt(SYSTEM_PROPERTY_PM_BON_MAX, 2000);
 
             mFollowProximityOff = SystemProperties.get(SYSTEM_PROPERTY_PM_PROXIMITY_OFF, "0").equals("1");
             mTurnOnAfterCall = SystemProperties.get(SYSTEM_PROPERTY_PM_ON_AFTER_CALL, "0").equals("1");
 
-            mReaderMode = false; // SystemProperties.get(SYSTEM_PROPERTY_PM_READER_MODE, "0").equals("1");
+            mReaderMode = SystemProperties.get(SYSTEM_PROPERTY_PM_READER_MODE, "0").equals("1");
 
             mHideGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_HIDE_GMS, "0").equals("1");
             mForceGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_FORCE_GMS, "0").equals("1");
+
+	        mThreadSchedulerFullPower = SystemProperties.getInt(SYSTEM_PROPERTY_PM_KTHREAD_FP, 0);
+            mThreadSchedulerReaderMode = SystemProperties.getInt(SYSTEM_PROPERTY_PM_KTHREAD_RM, 1);
+            mThreadSchedulerScreenOff = SystemProperties.getInt(SYSTEM_PROPERTY_PM_KTHREAD_SO, 2);
 
             nativeInit();
             nativeSetAutoSuspend(false);
@@ -2666,11 +2683,17 @@ public final class PowerManagerService extends SystemService
 	    mProximityButtonMax = SystemProperties.getInt(SYSTEM_PROPERTY_PM_BON_MAX, 2000);
 
         mTurnOnAfterCall = SystemProperties.get(SYSTEM_PROPERTY_PM_ON_AFTER_CALL, "0").equals("1");
-
+        
         mReaderMode = SystemProperties.get(SYSTEM_PROPERTY_PM_READER_MODE, "0").equals("1");
+        mSystemActive = 0;
 
         mHideGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_HIDE_GMS, "0").equals("1");
         mForceGMS = SystemProperties.get(SYSTEM_PROPERTY_PM_FORCE_GMS, "0").equals("1");
+
+	    mThreadSchedulerFullPower = SystemProperties.getInt(SYSTEM_PROPERTY_PM_KTHREAD_FP, 0);
+        mThreadSchedulerReaderMode = SystemProperties.getInt(SYSTEM_PROPERTY_PM_KTHREAD_RM, 1);
+        mThreadSchedulerScreenOff = SystemProperties.getInt(SYSTEM_PROPERTY_PM_KTHREAD_SO, 2);
+
 
     }
 
@@ -3267,6 +3290,10 @@ public final class PowerManagerService extends SystemService
             // On some hardware it may not be safe to suspend because the proximity
             // sensor may not be correctly configured as a wake-up source.
 
+            if (mIsPowered) {
+                return true;
+            }
+
             if ((mDisplayPowerRequest.useProximitySensor && !mProximityPositive) || !mSuspendWhenScreenOffDueToProximityConfig)  {
                 return true;
             }
@@ -3278,11 +3305,7 @@ public final class PowerManagerService extends SystemService
 
             mHandler.removeMessages(MSG_UPDATE_POWERSTATE);
 
-            final long now = SystemClock.uptimeMillis();
-            if( mReaderMode && !mDisplayPowerRequest.useProximitySensor && ( now - mLastUserActivityTime < 2000 ) ) {
-                Message msg = mHandler.obtainMessage(MSG_UPDATE_POWERSTATE);
-                msg.setAsynchronous(true);
-                mHandler.sendMessageAtTime(msg, mLastUserActivityTime + 2000);
+            if( mReaderMode && !mDisplayPowerRequest.useProximitySensor && isKeepSystemActiveForReaderModeLocked() ) {
                 return true;
             } 
         }
@@ -3291,6 +3314,34 @@ public final class PowerManagerService extends SystemService
         }
         // Let the system suspend if the screen is off or dozing.
         return false;
+    }
+
+    private boolean isKeepSystemActiveForReaderModeLocked() {
+        final long now = SystemClock.uptimeMillis();
+        long nextCheckTimeout = 0;
+        boolean keepActive = false;
+        if( now - mLastLaunchTime < 5000 ) {
+            nextCheckTimeout = 5100 - (now - mLastLaunchTime);
+            keepActive = true;
+            Slog.d(TAG,"ReaderMode: lastlaunchtime active=" + keepActive + ", checkTimeout=" + nextCheckTimeout);
+        } else if( mSystemActive != 0 ) {
+            nextCheckTimeout = 0;
+            keepActive = true;
+            Slog.d(TAG,"ReaderMode: mSystemActive=" + mSystemActive + " active=" + keepActive + ", checkTimeout=" + nextCheckTimeout);
+        } else if( now - mLastUserActivityTime < 2000 )  {
+            nextCheckTimeout = 2100 - (now - mLastUserActivityTime);
+            keepActive = true;
+            Slog.d(TAG,"ReaderMode: latuseractivity active=" + keepActive + ", checkTimeout=" + nextCheckTimeout);
+        } else {
+            Slog.d(TAG,"ReaderMode: inactive active=" + keepActive + ", checkTimeout=" + nextCheckTimeout);
+        }
+        if( nextCheckTimeout != 0 ) {
+            Message msg = mHandler.obtainMessage(MSG_UPDATE_POWERSTATE);
+            msg.setAsynchronous(true);
+            mHandler.sendMessageAtTime(msg, now + nextCheckTimeout);
+        }
+
+        return keepActive;
     }
 
     private void handleUpdatePowerState() {
@@ -3655,7 +3706,8 @@ public final class PowerManagerService extends SystemService
 
  	    if( appPackageName == null ) appPackageName = "android";
 
-        if ((wakeLock.mFlags & PowerManager.WAKE_LOCK_LEVEL_MASK)
+        if( (mDisplayPowerRequest.policy == DisplayPowerRequest.POLICY_OFF) &&
+            (wakeLock.mFlags & PowerManager.WAKE_LOCK_LEVEL_MASK)
             == PowerManager.PARTIAL_WAKE_LOCK) {
 
 	        if( (wakeLock.mFlags & (
@@ -3879,8 +3931,77 @@ public final class PowerManagerService extends SystemService
         mIsVrModeEnabled = enabled;
     }
 
+
+/*
+    POWER_HINT_VSYNC = 0x00000001,
+    POWER_HINT_INTERACTION = 0x00000002,
+    POWER_HINT_VIDEO_ENCODE = 0x00000003,
+    POWER_HINT_VIDEO_DECODE = 0x00000004,
+    POWER_HINT_LOW_POWER = 0x00000005,
+    POWER_HINT_SUSTAINED_PERFORMANCE = 0x00000006,
+    POWER_HINT_VR_MODE = 0x00000007,
+    POWER_HINT_LAUNCH = 0x00000008,
+    POWER_HINT_DISABLE_TOUCH = 0x00000009
+
+
+*/
+
+    static long POWER_HINT_VSYNC_MASK = 0x00000001;
+    static long POWER_HINT_INTERACTIVE_MASK = 0x00000002;
+    static long POWER_HINT_SUSTAINED_PERFORMANCE_MASK = 0x00000004;
+    static long POWER_HINT_VR_MODE_MASK = 0x00000008;
+    static long POWER_HINT_LAUNCH_MASK = 0x00000008;
+
     private void powerHintInternal(int hintId, int data) {
+
         nativeSendPowerHint(hintId, data);
+
+        if( mLightDeviceIdleMode || mDeviceIdleMode ) {
+            return;
+        }
+        if( !mReaderMode ) {
+            mSystemActive = 0x00000002;
+            return;
+        }
+
+        final long eventTime = SystemClock.uptimeMillis();
+        boolean changed = false;
+
+        Slog.d(TAG, "powerHintInternal id=" + hintId + ", data=" + data);
+
+        switch(hintId) {
+            case 0x00000001:
+                if( data==1 ) mSystemActive |= POWER_HINT_VSYNC_MASK;
+                else mSystemActive &= ~POWER_HINT_VSYNC_MASK;
+                changed = true;
+                break;
+            case 0x00000002:
+                changed = true;
+                break;
+            case 0x00000006:
+                if( data==1 ) mSystemActive |= POWER_HINT_SUSTAINED_PERFORMANCE_MASK;
+                else mSystemActive &= ~POWER_HINT_SUSTAINED_PERFORMANCE_MASK;
+                mLastSystemActivityTime = eventTime;
+                changed = true;
+                break;
+            case 0x00000007:
+                if( data==1 ) mSystemActive |= POWER_HINT_VR_MODE_MASK;
+                else mSystemActive &= ~POWER_HINT_VR_MODE_MASK;
+                changed = true;
+                break;
+            case 0x00000008:
+                mLastLaunchTime = eventTime;
+                changed = true;
+                break;
+        }
+
+
+        if( changed ) {
+            Message msg = mHandler.obtainMessage(MSG_UPDATE_POWERSTATE);
+            msg.setAsynchronous(true);
+            mHandler.sendMessage(msg);
+        }
+
     }
 
     private void setTemporaryButtonBrightnessSettingOverrideInternal(int brightness) {
