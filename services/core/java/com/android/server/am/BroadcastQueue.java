@@ -635,7 +635,7 @@ public final class BroadcastQueue {
                     if (allowed == ActivityManager.APP_START_MODE_DISABLED || allowed == ActivityManager.APP_START_MODE_DELAYED ) {
                         Slog.w(TAG, "Background execution disabled: receiving " + r.intent);
                         skip = true;
-                    } /*else if (((r.intent.getFlags()&Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND) != 0)
+                    } else if ( allowed == ActivityManager.APP_START_MODE_DELAYED_RIGID && ((r.intent.getFlags()&Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND) != 0)
                             || (r.intent.getComponent() == null
                                 && r.intent.getPackage() == null
                                 && ((r.intent.getFlags()
@@ -644,7 +644,7 @@ public final class BroadcastQueue {
                         mService.addBackgroundCheckViolationLocked(r.intent.getAction(),filter.packageName);
                         Slog.w(TAG, "Background execution not allowed: receiving "  + r.intent);
                         skip = true;
-                    } */
+                    } 
                 }
             }
 
