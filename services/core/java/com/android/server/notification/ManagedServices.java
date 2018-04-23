@@ -912,7 +912,11 @@ abstract public class ManagedServices {
                             mHandler.postDelayed(new Runnable() {
                                     @Override
                                     public void run() {
-                                        registerService(name, userid);
+                                        try {
+                                            registerService(name, userid);
+                                        } catch( Exception e ) {
+                                            Slog.e(TAG, "Exception on rebind: ", e);
+                                        }
                                     }
                                }, ON_BINDING_DIED_REBIND_DELAY_MS);
                         } else {
