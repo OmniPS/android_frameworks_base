@@ -107,7 +107,7 @@ public final class ActiveServices {
 
     // How long the startForegroundService() grace period is to get around to
     // calling startForeground() before we ANR + stop it.
-    static final int SERVICE_START_FOREGROUND_TIMEOUT = 15*1000;
+    static final int SERVICE_START_FOREGROUND_TIMEOUT = 5*1000;
 
     final ActivityManagerService mAm;
 
@@ -630,7 +630,10 @@ public final class ActiveServices {
         //    return;
         //}
 
+        //if (DEBUG_SERVICE) 
         if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Stop services for uid=" + uid);
+
+        if( force && !mAm.mDeviceIdleMode ) return;
 
         ServiceMap services = mServiceMap.get(UserHandle.getUserId(uid));
         ArrayList<ServiceRecord> stopping = null;
@@ -639,16 +642,24 @@ public final class ActiveServices {
                 ServiceRecord service = services.mServicesByName.valueAt(i);
                 if (service.appInfo.uid == uid /*&& service.startRequested */) {
                     if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Checkservice service: " + service);
-                    //Slog.w(TAG, "getAppStartModeLocked: stopInBackgroundLocked service=" + service);
-                    //if (mAm.getAppStartModeLocked(service.appInfo.uid, service.packageName,
-                    //        service.appInfo.targetSdkVersion, -1, false, false)
-                    //        != ActivityManager.APP_START_MODE_NORMAL) {
+                    if (mAm.getAppStartModeLocked(service.appInfo.uid, service.packageName,
+                           service.appInfo.targetSdkVersion, -1, false, false)
+                            != ActivityManager.APP_START_MODE_NORMAL) {
 
 
                         if( mAm.isWhiteListedService(service.name.getPackageName(),service.name.getClassName()) ) {
                             if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Whitelisted service: " + service);
                             continue;
                         }
+
+                        if( force ) {
+                            int allowed = mAm.mAppOpsService.noteOperation(AppOpsManager.OP_WAKE_LOCK, service.appInfo.uid, service.packageName);
+                            if( allowed != AppOpsManager.MODE_IGNORED) { 
+                                continue;
+                            }
+                        }
+                        if (DEBUG_SERVICE) Slog.w(TAG, "getAppStartModeLocked: stopInBackgroundLocked service=" + service);
+
                         if (stopping == null) {
                             stopping = new ArrayList<>();
                         }
@@ -664,7 +675,7 @@ public final class ActiveServices {
                         sb.append(compName);
                         if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", sb.toString());
                         stopping.add(service);
-                    //}
+                   }
                 }
             }
             if (stopping != null) {
@@ -674,9 +685,11 @@ public final class ActiveServices {
                     try {
                         services.ensureNotStartingBackgroundLocked(service);
                         if( force ) {
-                            Slog.v(TAG + "_force_stop_service", "Service: " + service.name.getClassName());
-                            bringDownServiceLocked(service);
+                            if (DEBUG_SERVICE) Slog.v(TAG + "_force_bringdown_service", "Service: " + service.name.getClassName());
+                            //bringDownServiceLocked(service);
+                            stopServiceLocked(service);
                         } else {
+                            if (DEBUG_SERVICE) Slog.v(TAG + "_force_stop_service", "Service: " + service.name.getClassName());
                             stopServiceLocked(service);
                         }
                     } catch( Exception e ) {
@@ -2484,6 +2497,23 @@ public final class ActiveServices {
 
     private final boolean isServiceNeededLocked(ServiceRecord r, boolean knowConn,
             boolean hasConn) {
+
+        if( mAm.mForceStopBgServices && ( mAm.mDeviceIdleMode ) ) {
+            int allowed = AppOpsManager.MODE_ALLOWED; 
+            if( !mAm.isWhiteListedService(r.name.getPackageName(),r.name.getClassName()) ) {
+                    //allowed = mAm.getAppStartModeLocked(r.appInfo.uid, r.packageName,
+                    //r.appInfo.targetSdkVersion, -1, false, false);
+                try {
+                    allowed = mAm.mAppOpsService.noteOperation(AppOpsManager.OP_WAKE_LOCK, r.appInfo.uid, r.packageName);
+                } catch( Exception e ) {
+                }
+            }
+            if (allowed == AppOpsManager.MODE_IGNORED) {
+                if (DEBUG_SERVICE) Slog.v(TAG + "_check_oom_idle","Service not needed any more uid=" +  r.appInfo.uid + " srv " + r);
+                return false;
+            }
+        }
+
         // Are we still explicitly being asked to run?
         if (r.startRequested) {
             return true;
@@ -2506,6 +2536,7 @@ public final class ActiveServices {
         if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "Bring down service if needed:" + r);
         //r.dump("  ");
 
+
         if (isServiceNeededLocked(r, knowConn, hasConn)) {
             if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "Service needed knowConn=" + knowConn + ", hasConn=" + hasConn);
             return;
@@ -2521,7 +2552,7 @@ public final class ActiveServices {
 
     private final void bringDownServiceLocked(ServiceRecord r) {
         //if (DEBUG_SERVICE) 
-        Slog.i(TAG_SERVICE, "Bring down service:" + r);
+        if (DEBUG_SERVICE) Slog.i(TAG_SERVICE, "Bring down service:" + r);
         //r.dump("  ");
 
         // Report to all of the connections that the service is no longer
