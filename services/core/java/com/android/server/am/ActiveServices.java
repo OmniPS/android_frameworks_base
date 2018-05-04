@@ -630,6 +630,11 @@ public final class ActiveServices {
         //    return;
         //}
 
+        if( mAm.uidOnBackgroundWhitelist(uid) || mAm.isOnDeviceIdleWhitelistLocked(uid) ) {
+            if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service","Service explicitly whitelisted for uid=" +  uid);
+        }
+
+
         //if (DEBUG_SERVICE) 
         if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Stop services for uid=" + uid);
 
@@ -2519,6 +2524,10 @@ public final class ActiveServices {
             return true;
         }
 
+        if( mAm.uidOnBackgroundWhitelist(r.appInfo.uid) || mAm.isOnDeviceIdleWhitelistLocked(r.appInfo.uid) ) {
+            if (DEBUG_SERVICE) Slog.v(TAG + "_check_oom_idle","Service explicitly whitelisted. Consider always needed uid=" +  r.appInfo.uid + " srv " + r);
+        }
+
         // Is someone still bound to us keeping us running?
         if (!knowConn) {
             hasConn = r.hasAutoCreateConnections();
@@ -3483,7 +3492,7 @@ public final class ActiveServices {
                 }
             }
             if (timeout != null && mAm.mLruProcesses.contains(proc)) {
-                if( mAm.mDeviceIdleMode || mAm.mLightDeviceIdleMode  ) {
+                if( mAm.mDeviceIdleMode || mAm.mLightDeviceIdleMode || !mScreenOn ) {
                     Slog.w(TAG, "Timeout while Idle executing service: " + timeout);
                 } else {
                     Slog.w(TAG, "Timeout executing service: " + timeout);

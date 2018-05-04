@@ -619,6 +619,7 @@ public final class BroadcastQueue {
             if (!skip) {
                 if (DEBUG_BROADCAST) Slog.v(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
                 int allowed = ActivityManager.APP_START_MODE_NORMAL;
+                mService.updateScreenState(r.intent);
                 if( !mService.isWhiteListedIntent(filter.packageName,r.intent) ) {
                     allowed = mService.getAppStartModeLocked(
                         filter.receiverList.uid, filter.packageName,
@@ -1293,6 +1294,7 @@ public final class BroadcastQueue {
             if (!skip) {
                 Slog.w(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
                 int allowed = ActivityManager.APP_START_MODE_NORMAL;
+                mService.updateScreenState(r.intent);
                 if( !mService.isWhiteListedIntent(info.activityInfo.packageName,r.intent) ) {
                     allowed = mService.getAppStartModeLocked(
                         info.activityInfo.applicationInfo.uid, info.activityInfo.packageName,

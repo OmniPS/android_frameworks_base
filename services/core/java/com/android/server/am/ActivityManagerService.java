@@ -1213,6 +1213,8 @@ public class ActivityManagerService extends IActivityManager.Stub
     boolean mDeviceIdleMode = false;
     boolean mLightDeviceIdleMode = false;
     boolean mForceStopBgServices = false;
+    boolean mScreenOn = true;
+    boolean mIsPowered = true;
 
     /**
      * Set of app ids that are whitelisted for device idle and thus background check.
@@ -7388,6 +7390,18 @@ public class ActivityManagerService extends IActivityManager.Stub
         }, idleFilter);
 
 
+        IntentFilter chargingFilter = new IntentFilter();
+        chargingFilter.addAction(Intent.ACTION_BATTERY_CHANGED);
+
+        mContext.registerReceiver(new BroadcastReceiver() {
+            @Override public void onReceive(Context context, Intent intent) {
+                synchronized (ActivityManagerService.this) {
+                    int plugged = intent.getIntExtra("plugged", 0);
+                    mIsPowered = plugged != 0;
+                }
+            }
+        }, chargingFilter);
+
         // Let system services know.
         mSystemServiceManager.startBootPhase(SystemService.PHASE_BOOT_COMPLETED);
 
@@ -8655,7 +8669,8 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
 
-        if( !(mDeviceIdleMode) ) return ActivityManager.APP_START_MODE_NORMAL;
+        //if( !(mDeviceIdleMode) ) return ActivityManager.APP_START_MODE_NORMAL;
+        if( mScreenOn || mIsPowered ) return ActivityManager.APP_START_MODE_NORMAL;
 
         // Apps that target O+ are always subject to background check
         if (packageTargetSdk >= Build.VERSION_CODES.O) {
@@ -8783,6 +8798,21 @@ public class ActivityManagerService extends IActivityManager.Stub
         return true;
     }
 
+
+    void updateScreenState(Intent intent) {
+        if( intent == null ) return;
+	    String act = intent.getAction();
+
+        if( act != null ) {
+	    	if( act.contains("android.intent.action.SCREEN_OFF") ) {
+                mScreenOn = false;
+            }
+	    	if( act.contains("android.intent.action.SCREEN_ON") ) {
+                mScreenOn = true;
+            }
+        }
+    }
+
     boolean isWhiteListedIntent(String packageName, Intent intent) {
 
         if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG,"Intent packageName=" + packageName + ", uri=" + intent.toUri(0));
@@ -8793,6 +8823,8 @@ public class ActivityManagerService extends IActivityManager.Stub
         if( pkg == null ) pkg = packageName;
 
         if( act != null ) {
+
+
    		    if( act.contains("com.google.android.c2dm") ) {
                 if( intent == null ) return true;
                 return isWhitelistedC2DIntent(packageName, intent);
@@ -8807,11 +8839,13 @@ public class ActivityManagerService extends IActivityManager.Stub
 	    	    if( act.contains("android.os.action.DEVICE_IDLE_MODE_CHANGED") ) return true;
 	    	    if( act.contains("android.os.action.LIGHT_DEVICE_IDLE_MODE_CHANGED") ) return true;
 
-        	    if( act.contains("com.google.android.gms.auth.DATA_PROXY") ) return true;
+
+    	    	if( act.contains("com.google.android.intent.action.GCM_RECONNECT") ) return true;
+
+        	    if( act.contains("com.google.android.gms.auth") ) return true;
    	    	    if( act.contains("com.google.android.gms.config") ) return true;
        		    if( act.contains("com.google.android.gms.droidguard") ) return true;
     	    	if( act.contains("com.google.android.gms.gcm") ) return true;
-    	    	if( act.contains("com.google.android.intent.action.GCM_RECONNECT") ) return true;
     	    	if( act.contains("com.google.android.gms.trustagent") ) return true;
     	    	if( act.contains("com.google.android.gms.trustlet") ) return true;
     	    	if( act.contains("com.google.android.gms.droidguard") ) return true;
@@ -8848,6 +8882,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 		        if( cls.equals("com.google.android.contextmanager.service.ContextManagerService") ) return true;
 		        if( cls.equals("com.google.android.gms.wearable.service.WearableService") ) return true;
 
+                if( cls.contains("SafetyNetClientService") ) return true;
         		if( cls.contains("com.google.android.gms.config.ConfigService") ) return true;
         		if( cls.contains("com.google.android.gms.deviceconnection") ) return true;
         		if( cls.contains("com.google.android.gms.lockbox") ) return true;
@@ -8910,7 +8945,7 @@ com.google.android.gms/.trustagent.api.bridge.TrustAgentBridgeService
         if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg="
                 + packageName + " rec=" + uidRec + " always=" + alwaysRestrict + " idle="
                 + (uidRec != null ? uidRec.idle : false));
-        if (uidRec == null || alwaysRestrict || uidRec.idle || mDeviceIdleMode || mLightDeviceIdleMode) {
+        if (uidRec == null || alwaysRestrict || uidRec.idle || mDeviceIdleMode || mLightDeviceIdleMode || !mScreenOn) {
             boolean ephemeral;
             if (uidRec == null) {
                 ephemeral = getPackageManagerInternalLocked().isPackageEphemeral(
@@ -8969,8 +9004,6 @@ com.google.android.gms/.trustagent.api.bridge.TrustAgentBridgeService
             }
         }
         if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG, "checkAllowBackground: uid=" + uid + " pkg=" + packageName + " not idle enabled");
-        if( mDeviceIdleMode || mLightDeviceIdleMode ) uidRec.disabledIdle = false;
-        else uidRec.disabledBackground = false;
         return ActivityManager.APP_START_MODE_NORMAL;
     }
 
@@ -12660,7 +12693,7 @@ com.google.android.gms/.trustagent.api.bridge.TrustAgentBridgeService
         return r;
     }
 
-    private boolean uidOnBackgroundWhitelist(final int uid) {
+    boolean uidOnBackgroundWhitelist(final int uid) {
         final int appId = UserHandle.getAppId(uid);
         final int[] whitelist = mBackgroundAppIdWhitelist;
         final int N = whitelist.length;
@@ -23334,6 +23367,8 @@ com.google.android.gms/.trustagent.api.bridge.TrustAgentBridgeService
                         + " to " + uidRec.curProcState + ", whitelist from " + uidRec.setWhitelist
                         + " to " + uidRec.curWhitelist);
                 if (ActivityManager.isProcStateBackground(uidRec.curProcState)
+                        && !uidOnBackgroundWhitelist(uidRec.uid) 
+                        && !isOnDeviceIdleWhitelistLocked(uidRec.uid) 
                         && !uidRec.curWhitelist) {
                     // UID is now in the background (and not on the temp whitelist).  Was it
                     // previously in the foreground (or on the temp whitelist)?
