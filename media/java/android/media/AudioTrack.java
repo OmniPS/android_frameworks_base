@@ -16,6 +16,9 @@
 
 package android.media;
 
+import android.content.Context;
+import android.content.Intent;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
@@ -37,10 +40,13 @@ import android.os.Message;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.util.ArrayMap;
 import android.util.Log;
 
 import com.android.internal.annotations.GuardedBy;
+
+import android.media.audiofx.AudioEffect;
 
 /**
  * The AudioTrack class manages and plays a single audio resource for Java applications.
@@ -387,6 +393,13 @@ public class AudioTrack extends PlayerBase
      */
     @SuppressWarnings("unused")
     private long mJniData;
+
+
+    private boolean mForceEffects = false;
+    private boolean mForceEffectsForAllStreams = false;
+
+    private static final String SYSTEM_PROPERTY_FORCE_EFFECTS = "persist.audio.force_effects";
+    private static final String SYSTEM_PROPERTY_EFFECTS_FOR_ALL_STREAMS = "persist.audio.effects_all";
 
 
     //--------------------------------------------------------------------------
@@ -1162,6 +1175,17 @@ public class AudioTrack extends PlayerBase
     public void release() {
         // even though native_release() stops the native AudioTrack, we need to stop
         // AudioTrack subclasses too.
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + mSessionId
+            + " stream=" + mStreamType);
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mSessionId);
+            ActivityThread.currentApplication().sendBroadcast(intent);
+        }
+
         try {
             stop();
         } catch(IllegalStateException ise) {
@@ -1174,6 +1198,17 @@ public class AudioTrack extends PlayerBase
 
     @Override
     protected void finalize() {
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + mSessionId
+            + " stream=" + mStreamType);
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mSessionId);
+            ActivityThread.currentApplication().sendBroadcast(intent);
+        }
+
         baseRelease();
         native_finalize();
     }
@@ -2003,12 +2038,32 @@ public class AudioTrack extends PlayerBase
         }
     }
 
+    boolean audioEffectStarted = false;
     private void startImpl() {
         synchronized(mPlayStateLock) {
             baseStart();
             native_start();
             mPlayState = PLAYSTATE_PLAYING;
         }
+
+        mForceEffects = SystemProperties.get(SYSTEM_PROPERTY_FORCE_EFFECTS, "0").equals("1");
+        mForceEffectsForAllStreams = SystemProperties.get(SYSTEM_PROPERTY_EFFECTS_FOR_ALL_STREAMS, "0").equals("1");
+
+        if( mForceEffects && 
+            ( mForceEffectsForAllStreams || mStreamType == AudioManager.STREAM_MUSIC) ) {
+
+            Log.i(TAG, "Start AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + mSessionId
+            + " stream=" + mStreamType);
+
+            audioEffectStarted = true;
+            final Intent intent = new Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mSessionId);
+            intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, ActivityThread.currentPackageName());
+            intent.putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC);
+            ActivityThread.currentApplication().sendBroadcast(intent);
+        }
+
     }
 
     /**
@@ -2023,6 +2078,16 @@ public class AudioTrack extends PlayerBase
     throws IllegalStateException {
         if (mState != STATE_INITIALIZED) {
             throw new IllegalStateException("stop() called on uninitialized AudioTrack.");
+        }
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + mSessionId
+            + " stream=" + mStreamType);
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mSessionId);
+            ActivityThread.currentApplication().sendBroadcast(intent);
         }
 
         // stop playing
@@ -2046,6 +2111,16 @@ public class AudioTrack extends PlayerBase
     throws IllegalStateException {
         if (mState != STATE_INITIALIZED) {
             throw new IllegalStateException("pause() called on uninitialized AudioTrack.");
+        }
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + mSessionId
+            + " stream=" + mStreamType);
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mSessionId);
+            ActivityThread.currentApplication().sendBroadcast(intent);
         }
 
         // pause playback
@@ -2073,6 +2148,17 @@ public class AudioTrack extends PlayerBase
      * may return a short actual transfer count.
      */
     public void flush() {
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + mSessionId
+            + " stream=" + mStreamType);
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, mSessionId);
+            ActivityThread.currentApplication().sendBroadcast(intent);
+        }
+
         if (mState == STATE_INITIALIZED) {
             // flush the data in native layer
             native_flush();

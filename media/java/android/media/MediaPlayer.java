@@ -16,6 +16,9 @@
 
 package android.media;
 
+import android.content.Context;
+import android.content.Intent;
+
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -58,6 +61,8 @@ import android.media.SubtitleTrack.RenderingWidget;
 import android.media.SyncParams;
 
 import com.android.internal.util.Preconditions;
+
+import android.media.audiofx.AudioEffect;
 
 import libcore.io.IoBridge;
 import libcore.io.Libcore;
@@ -647,6 +652,15 @@ public class MediaPlayer extends PlayerBase
     private boolean mPrepareDrmInProgress;
     private ProvisioningThread mDrmProvisioningThread;
 
+    private Context mContext;
+
+    private boolean mForceEffects = false;
+    private boolean mForceEffectsForAllStreams = false;
+
+    private static final String SYSTEM_PROPERTY_FORCE_EFFECTS = "persist.audio.force_effects";
+    private static final String SYSTEM_PROPERTY_EFFECTS_FOR_ALL_STREAMS = "persist.audio.effects_all";
+
+
     /**
      * Default constructor. Consider using one of the create() methods for
      * synchronously instantiating a MediaPlayer from a Uri or resource.
@@ -912,6 +926,8 @@ public class MediaPlayer extends PlayerBase
                 mp.setDisplay(holder);
             }
             mp.prepare();
+            mp.mContext = context;
+            Log.d(TAG, "create(1): pkg=" + context.getPackageName() + ", sessionId=" + audioSessionId);
             return mp;
         } catch (IOException ex) {
             Log.d(TAG, "create failed:", ex);
@@ -977,6 +993,8 @@ public class MediaPlayer extends PlayerBase
             mp.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
             afd.close();
             mp.prepare();
+            mp.mContext = context;
+            Log.d(TAG, "create(2): pkg=" + context.getPackageName() + ", sessionId=" + audioSessionId);
             return mp;
         } catch (IOException ex) {
             Log.d(TAG, "create failed:", ex);
@@ -1035,6 +1053,7 @@ public class MediaPlayer extends PlayerBase
         if (context == null) {
             throw new NullPointerException("context param can not be null.");
         }
+        mContext = context;
 
         if (uri == null) {
             throw new NullPointerException("uri param can not be null.");
@@ -1332,10 +1351,33 @@ public class MediaPlayer extends PlayerBase
         }
     }
 
+    private boolean audioEffectStarted = false;
     private void startImpl() {
         baseStart();
         stayAwake(true);
         _start();
+
+        mForceEffects = SystemProperties.get(SYSTEM_PROPERTY_FORCE_EFFECTS, "0").equals("1");
+        mForceEffectsForAllStreams = SystemProperties.get(SYSTEM_PROPERTY_EFFECTS_FOR_ALL_STREAMS, "0").equals("1");
+
+        if( mForceEffects && 
+            ( mForceEffectsForAllStreams || getAudioStreamType() == AudioManager.STREAM_MUSIC) ) {
+
+            Log.i(TAG, "Start AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + getAudioSessionId()
+            + " stream=" + getAudioStreamType());
+
+            audioEffectStarted = true;
+            String packageName = "android";
+            if( mContext != null ) packageName = mContext.getPackageName();
+
+            final Intent intent = new Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, getAudioSessionId());
+            intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName);
+            intent.putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC);
+            if( mContext != null ) mContext.sendBroadcast(intent);
+            else ActivityThread.currentApplication().sendBroadcast(intent);
+        }
     }
 
     private native void _start() throws IllegalStateException;
@@ -1357,9 +1399,22 @@ public class MediaPlayer extends PlayerBase
      * initialized.
      */
     public void stop() throws IllegalStateException {
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + getAudioSessionId()
+            + " stream=" + getAudioStreamType());
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, getAudioSessionId());
+            if( mContext != null ) mContext.sendBroadcast(intent);
+            else ActivityThread.currentApplication().sendBroadcast(intent);
+        }
+
         stayAwake(false);
         _stop();
         baseStop();
+
     }
 
     private native void _stop() throws IllegalStateException;
@@ -1371,6 +1426,18 @@ public class MediaPlayer extends PlayerBase
      * initialized.
      */
     public void pause() throws IllegalStateException {
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + getAudioSessionId()
+            + " stream=" + getAudioStreamType());
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, getAudioSessionId());
+            if( mContext != null ) mContext.sendBroadcast(intent);
+            else ActivityThread.currentApplication().sendBroadcast(intent);
+        }
+
         stayAwake(false);
         _pause();
         basePause();
@@ -2002,6 +2069,24 @@ public class MediaPlayer extends PlayerBase
      * at the same time.
      */
     public void release() {
+
+        if( mContext != null ) {
+            Log.d(TAG, "release: pkg=" + mContext.getPackageName() + ", sessionId=" + getAudioSessionId());   
+        } else {
+            Log.d(TAG, "release: pkg=null, sessionId=" + getAudioSessionId());   
+        }
+
+        if( audioEffectStarted ) {
+            Log.i(TAG, "Stop AudioEffects session for " + ActivityThread.currentPackageName()
+            + " id=" + getAudioSessionId()
+            + " stream=" + getAudioStreamType());
+            audioEffectStarted = false;
+            final Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, getAudioSessionId());
+            if( mContext != null ) mContext.sendBroadcast(intent);
+            else ActivityThread.currentApplication().sendBroadcast(intent);
+        }
+
         baseRelease();
         stayAwake(false);
         updateSurfaceScreenOn();
@@ -5163,7 +5248,7 @@ public class MediaPlayer extends PlayerBase
         private HandlerThread mHandlerThread;
 
         /** @hide */
-        public boolean DEBUG = false;
+        public boolean DEBUG = true;
 
         public TimeProvider(MediaPlayer mp) {
             mPlayer = mp;
