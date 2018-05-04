@@ -3109,6 +3109,8 @@ public final class PowerManagerService extends SystemService
                 if( DEBUG ) Slog.d(TAG, "DC:onProximityPositive");
                 mProximityPositive = true;
                 mDirty |= DIRTY_PROXIMITY_POSITIVE;
+                userActivityNoUpdateLocked(SystemClock.uptimeMillis(),
+                        PowerManager.USER_ACTIVITY_EVENT_OTHER, 0, Process.SYSTEM_UID);
                 updatePowerStateLocked();
             }
         }
@@ -3181,6 +3183,12 @@ public final class PowerManagerService extends SystemService
             prevProximity = useProximity;
             if( !useProximity && mProximityPositive ) {
                 mProximityPositive = false;
+                if( mDisplayPowerRequest.policy != DisplayPowerRequest.POLICY_OFF ) {
+                    mDirty |= DIRTY_PROXIMITY_POSITIVE;
+                    userActivityNoUpdateLocked(SystemClock.uptimeMillis(),
+                        PowerManager.USER_ACTIVITY_EVENT_OTHER, 0, Process.SYSTEM_UID);
+                    updatePowerStateLocked();
+                }
             }
         }
         return useProximity;
