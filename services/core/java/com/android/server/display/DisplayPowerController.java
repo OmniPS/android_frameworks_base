@@ -104,8 +104,8 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
     private static final int PROXIMITY_POSITIVE = 1;
 
     // Proximity sensor debounce delay in milliseconds for positive or negative transitions.
-    private static final int PROXIMITY_SENSOR_POSITIVE_DEBOUNCE_DELAY = 0;
-    private static final int PROXIMITY_SENSOR_NEGATIVE_DEBOUNCE_DELAY = 250;
+    private static final int PROXIMITY_SENSOR_POSITIVE_DEBOUNCE_DELAY = 250;
+    private static final int PROXIMITY_SENSOR_NEGATIVE_DEBOUNCE_DELAY = 100;
 
     // Trigger proximity if distance is less than 5 cm.
     private static final float TYPICAL_PROXIMITY_THRESHOLD = 5.0f;
@@ -698,6 +698,8 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 state = Display.STATE_VR;
                 break;
             case DisplayPowerRequest.POLICY_DIM:
+                state = Display.STATE_DOZE;
+                break;
             case DisplayPowerRequest.POLICY_BRIGHT:
             default:
                 state = Display.STATE_ON;
@@ -708,25 +710,30 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
         // Apply the proximity sensor.
         if (mProximitySensor != null) {
             if (mPowerRequest.useProximitySensor && state != Display.STATE_OFF) {
+                Slog.d(TAG, "Proximity: setProximitySensorEnabled(true) - 1");
                 setProximitySensorEnabled(true);
                 if (!mScreenOffBecauseOfProximity
                         && mProximity == PROXIMITY_POSITIVE) {
                     mScreenOffBecauseOfProximity = true;
+                    Slog.d(TAG, "Proximity: sendOnProximityPositiveWithWakelock()");
                     sendOnProximityPositiveWithWakelock();
                 }
             } else if (mWaitingForNegativeProximity
                     && mScreenOffBecauseOfProximity
                     && mProximity == PROXIMITY_POSITIVE
                     && state != Display.STATE_OFF) {
+                Slog.d(TAG, "Proximity: setProximitySensorEnabled(true) - 2");
                 setProximitySensorEnabled(true);
             } else {
                 setProximitySensorEnabled(false);
                 mWaitingForNegativeProximity = false;
+                Slog.d(TAG, "Proximity: setProximitySensorEnabled(false) - 1");
             }
             if (mScreenOffBecauseOfProximity
                     && mProximity != PROXIMITY_POSITIVE) {
                 mScreenOffBecauseOfProximity = false;
                 sendOnProximityNegativeWithWakelock();
+                Slog.d(TAG, "Proximity: sendOnProximityNegativeWithWakelock()");
             }
         } else {
             mWaitingForNegativeProximity = false;
@@ -1218,6 +1225,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 mProximitySensorEnabled = true;
                 mSensorManager.registerListener(mProximitySensorListener, mProximitySensor,
                         SensorManager.SENSOR_DELAY_NORMAL, mHandler);
+                Slog.d(TAG, "Proximity: Sensor enabled");
             }
         } else {
             if (mProximitySensorEnabled) {
@@ -1229,6 +1237,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 mHandler.removeMessages(MSG_PROXIMITY_SENSOR_DEBOUNCED);
                 mSensorManager.unregisterListener(mProximitySensorListener);
                 clearPendingProximityDebounceTime(); // release wake lock (must be last)
+                Slog.d(TAG, "Proximity: Sensor disabled");
             }
         }
     }
@@ -1236,9 +1245,11 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
     private void handleProximitySensorEvent(long time, boolean positive) {
         if (mProximitySensorEnabled) {
             if (mPendingProximity == PROXIMITY_NEGATIVE && !positive) {
+                Slog.d(TAG, "Proximity: Negative event while it is already negative!");
                 return; // no change
             }
             if (mPendingProximity == PROXIMITY_POSITIVE && positive) {
+                Slog.d(TAG, "Proximity: Positive event while it is already positive!");
                 return; // no change
             }
 
@@ -1256,6 +1267,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                         time + PROXIMITY_SENSOR_NEGATIVE_DEBOUNCE_DELAY); // acquire wake lock
             }
 
+            Slog.d(TAG, "Proximity: Event " + (positive ? "POSITIVE" : "NEGATIVE") );
             // Debounce the new sensor reading.
             debounceProximitySensor();
         }
@@ -1269,6 +1281,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
             if (mPendingProximityDebounceTime <= now) {
                 // Sensor reading accepted.  Apply the change then release the wake lock.
                 mProximity = mPendingProximity;
+                Slog.d(TAG, "Proximity: Update " + (mProximity == PROXIMITY_POSITIVE ? "POSITIVE" : "NEGATIVE") );
                 updatePowerState();
                 clearPendingProximityDebounceTime(); // release wake lock (must be last)
             } else {
