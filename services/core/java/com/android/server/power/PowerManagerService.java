@@ -3328,8 +3328,8 @@ public final class PowerManagerService extends SystemService
         final long now = SystemClock.uptimeMillis();
         long nextCheckTimeout = 0;
         boolean keepActive = false;
-        if( now - mLastLaunchTime < 5000 ) {
-            nextCheckTimeout = 5100 - (now - mLastLaunchTime);
+        if( now - mLastLaunchTime < 10000 ) {
+            nextCheckTimeout = 10100 - (now - mLastLaunchTime);
             keepActive = true;
             Slog.d(TAG,"ReaderMode: lastlaunchtime active=" + keepActive + ", checkTimeout=" + nextCheckTimeout);
         } else if( mSystemActive != 0 ) {
@@ -3989,7 +3989,7 @@ public final class PowerManagerService extends SystemService
             case 0x00000006:
                 if( data==1 ) mSystemActive |= POWER_HINT_SUSTAINED_PERFORMANCE_MASK;
                 else mSystemActive &= ~POWER_HINT_SUSTAINED_PERFORMANCE_MASK;
-                mLastSystemActivityTime = eventTime;
+                //mLastSystemActivityTime = eventTime;
                 changed = true;
                 break;
             case 0x00000007:
