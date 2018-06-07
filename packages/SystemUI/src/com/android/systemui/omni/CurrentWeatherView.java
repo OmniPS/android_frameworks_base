@@ -50,6 +50,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.android.systemui.R;
+import com.android.settingslib.Utils;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -65,6 +66,7 @@ public class CurrentWeatherView extends FrameLayout implements OmniJawsClient.Om
     private TextView mLeftText;
     private TextView mRightText;
     private int mTextColor;
+    private float mDarkAmount;
 
     public CurrentWeatherView(Context context) {
         this(context, null);
@@ -114,13 +116,20 @@ public class CurrentWeatherView extends FrameLayout implements OmniJawsClient.Om
             return;
         }
         Drawable d = mWeatherClient.getWeatherConditionImage(weatherData.conditionCode);
+        d = d.mutate();
+        updateTint(d);
         mCurrentImage.setImageDrawable(d);
         mRightText.setText(weatherData.temp + " " + weatherData.tempUnits);
         mLeftText.setText(weatherData.city);
     }
 
+    private int getTintColor() {
+        return Utils.getColorAttr(mContext, R.attr.wallpaperTextColor);
+    }
+
     private void setErrorView() {
         Drawable d = mContext.getResources().getDrawable(R.drawable.ic_qs_weather_default_off_white);
+        updateTint(d);
         mCurrentImage.setImageDrawable(d);
         mLeftText.setText("");
         mRightText.setText("");
@@ -129,7 +138,14 @@ public class CurrentWeatherView extends FrameLayout implements OmniJawsClient.Om
     @Override
     public void weatherError(int errorReason) {
         if (DEBUG) Log.d(TAG, "weatherError " + errorReason);
-        setErrorView();
+        // since this is shown in ambient and lock screen
+        // it would look bad to show every error since the 
+        // screen-on revovery of the service had no chance
+        // to run fast enough
+        // so only show the disabled state
+        if (errorReason == OmniJawsClient.EXTRA_ERROR_DISABLED) {
+            setErrorView();
+        }
     }
 
     @Override
@@ -155,12 +171,22 @@ public class CurrentWeatherView extends FrameLayout implements OmniJawsClient.Om
     }
 
     public void blendARGB(float darkAmount) {
+        mDarkAmount = darkAmount;
         mLeftText.setTextColor(ColorUtils.blendARGB(mTextColor, Color.WHITE, darkAmount));
         mRightText.setTextColor(ColorUtils.blendARGB(mTextColor, Color.WHITE, darkAmount));
-        if (darkAmount == 1) {
+
+        if (mWeatherClient != null) {
+            // update image with correct tint
+            OmniJawsClient.WeatherInfo weatherData = mWeatherClient.getWeatherInfo();
+            updateWeatherData(weatherData);
+        }
+    }
+
+    private void updateTint(Drawable d) {
+        if (mDarkAmount == 1) {
             mCurrentImage.setImageTintList(ColorStateList.valueOf(Color.WHITE));
         } else {
-            mCurrentImage.setImageTintList(null);
+            mCurrentImage.setImageTintList((d instanceof VectorDrawable) ? ColorStateList.valueOf(getTintColor()) : null);
         }
     }
 }

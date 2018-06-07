@@ -4658,6 +4658,18 @@ public final class Settings {
                 "long_press_power_torch";
 
         /**
+         * Defines the global heads up notification snooze
+         * @hide
+         */
+        public static final String HEADS_UP_NOTIFICATION_SNOOZE = "heads_up_notification_snooze";
+
+        /**
+         * Heads up timeout configuration
+         * @hide
+         */
+        public static final String HEADS_UP_TIMEOUT = "heads_up_timeout";
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *
@@ -4792,6 +4804,26 @@ public final class Settings {
          * @hide
          */
         public static final String LOCKSCREEN_WEATHER = "lockscreen_weather";
+
+        /**
+         * @hide
+         */
+        public static final String SYSTEM_PROXI_CHECK_ENABLED = "system_proxi_check_enabled";
+
+        /**
+         * @hide
+         */
+        public static final String ASPECT_RATIO_APPS_LIST = "aspect_ratio_apps_list";
+
+        /**
+         * @hide
+         */
+        public static final String ASPECT_RATIO_APPS_ENABLED = "aspect_ratio_apps_enabled";
+
+        /**
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_MENU_ARROW_KEYS = "navigation_bar_menu_arrow_keys";
 
         /**
          * These are all public system settings
@@ -4995,6 +5027,12 @@ public final class Settings {
             PRIVATE_SETTINGS.add(DIALER_OPENCNAM_ACCOUNT_SID);
             PRIVATE_SETTINGS.add(DIALER_OPENCNAM_AUTH_TOKEN);
             PRIVATE_SETTINGS.add(LOCKSCREEN_WEATHER);
+            PRIVATE_SETTINGS.add(SYSTEM_PROXI_CHECK_ENABLED);
+            PRIVATE_SETTINGS.add(ASPECT_RATIO_APPS_LIST);
+            PRIVATE_SETTINGS.add(ASPECT_RATIO_APPS_ENABLED);
+            PRIVATE_SETTINGS.add(NAVIGATION_BAR_MENU_ARROW_KEYS);
+            PRIVATE_SETTINGS.add(HEADS_UP_NOTIFICATION_SNOOZE);
+            PRIVATE_SETTINGS.add(HEADS_UP_TIMEOUT);
         }
 
         /**

@@ -966,8 +966,14 @@ public class StatusBar extends SystemUI implements DemoMode,
             if (mNotificationPanel != null) {
                 mNotificationPanel.updateSettings();
             }
-            checkBarModes();
             setBrightnessSlider();
+
+            if (mLightBarController != null) {
+                mLightBarController.setBatterySaverColoring(Settings.System.getIntForUser(
+                        mContext.getContentResolver(), Settings.System.BATTERY_SAVER_SYSTEM_BAR_COLOR_ENABLE,
+                        1, mCurrentUserId) == 1);
+            }
+            checkBarModes();
         }
     }
     private OmniSettingsObserver mOmniSettingsObserver;
@@ -8021,5 +8027,9 @@ public class StatusBar extends SystemUI implements DemoMode,
                 mNavigationBar = null;
             }
         }
+    }
+
+    public void stopBrightnessControl() {
+        mHandler.removeCallbacks(mLongPressBrightnessChange);
     }
 }
