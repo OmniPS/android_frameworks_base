@@ -623,17 +623,11 @@ public final class ActiveServices {
     }
 
     void stopInBackgroundLocked(int uid, boolean force) {
-        // Stop all services associated with this uid due to it going to the background
-        // stopped state.
 
-        //if( PowerManagerService.getGmsUid() == uid ) {
-        //    return;
-        //}
-
-        if( mAm.uidOnBackgroundWhitelist(uid) || mAm.isOnDeviceIdleWhitelistLocked(uid) ) {
+        if( force && (mAm.uidOnBackgroundWhitelist(uid) || mAm.isOnDeviceIdleWhitelistLocked(uid))  ) {
             if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service","Service explicitly whitelisted for uid=" +  uid);
+            return;
         }
-
 
         //if (DEBUG_SERVICE) 
         if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Stop services for uid=" + uid);
@@ -652,8 +646,9 @@ public final class ActiveServices {
                             != ActivityManager.APP_START_MODE_NORMAL) {
 
 
-                        if( mAm.isWhiteListedService(service.name.getPackageName(),service.name.getClassName()) ) {
-                            if (DEBUG_SERVICE) Slog.v(TAG + "_check_stop_service", "Whitelisted service: " + service);
+                        if( force && mAm.isWhiteListedService(service.name.getPackageName(),service.name.getClassName()) ) {
+                            /*if (DEBUG_SERVICE)*/
+                                 Slog.w(TAG + "_check_stop_service", "Whitelisted service: " + service);
                             continue;
                         }
 
@@ -663,7 +658,8 @@ public final class ActiveServices {
                                 continue;
                             }
                         }
-                        if (DEBUG_SERVICE) Slog.w(TAG, "getAppStartModeLocked: stopInBackgroundLocked service=" + service);
+                        /*if (DEBUG_SERVICE) */
+                            ///Slog.w(TAG, "_stop_service: stopInBackgroundLocked service=" + service);
 
                         if (stopping == null) {
                             stopping = new ArrayList<>();
@@ -671,7 +667,7 @@ public final class ActiveServices {
                         String compName = service.name.flattenToShortString();
                         EventLogTags.writeAmStopIdleService(service.appInfo.uid, compName);
                         StringBuilder sb = new StringBuilder(256);
-                        sb.append("Stopping service due to app idle: ");
+                        sb.append("Force stop service : ");
                         UserHandle.formatUid(sb, service.appInfo.uid);
                         sb.append(" ");
                         TimeUtils.formatDuration(service.createTime
@@ -690,11 +686,13 @@ public final class ActiveServices {
                     try {
                         services.ensureNotStartingBackgroundLocked(service);
                         if( force ) {
-                            if (DEBUG_SERVICE) Slog.v(TAG + "_force_bringdown_service", "Service: " + service.name.getClassName());
+                            /*if (DEBUG_SERVICE) */
+                                Slog.w(TAG + "_force_bringdown_service", "Service: " + service.name.getClassName());
                             //bringDownServiceLocked(service);
                             stopServiceLocked(service);
                         } else {
-                            if (DEBUG_SERVICE) Slog.v(TAG + "_force_stop_service", "Service: " + service.name.getClassName());
+                            /* if (DEBUG_SERVICE) */
+                                Slog.w(TAG + "_force_stop_service", "Service: " + service.name.getClassName());
                             stopServiceLocked(service);
                         }
                     } catch( Exception e ) {

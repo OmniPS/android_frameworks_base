@@ -1424,12 +1424,12 @@ public final class PowerManagerService extends SystemService
 
     protected void notifyWakeLockAcquiredLocked(WakeLock wakeLock) {
         if (mSystemReady && !wakeLock.mDisabled) {
-	    if( !wakeLock.mNotifiedAcquired ) {
+	        if( !wakeLock.mNotifiedAcquired ) {
                 wakeLock.mNotifiedAcquired = true;
                 mNotifier.onWakeLockAcquired(wakeLock.mFlags, wakeLock.mTag, wakeLock.mPackageName,
                         wakeLock.mOwnerUid, wakeLock.mOwnerPid, wakeLock.mWorkSource,
                         wakeLock.mHistoryTag);
-	    }
+	        }
             restartNofifyLongTimerLocked(wakeLock);
         }
     }
@@ -2702,7 +2702,7 @@ public final class PowerManagerService extends SystemService
         if( mDisplayPowerRequest.policy == DisplayPowerRequest.POLICY_OFF ) {
             if( !suspended ) {
                 Slog.d(TAG, "onDisplayPowerPolicyChanged: suspend");
-                ((SystemSensorManager)mSensorManager).suspend(false);
+                ((SystemSensorManager)mSensorManager).suspend(true);
                 suspended = true;
             }
         } else {
@@ -3776,12 +3776,14 @@ public final class PowerManagerService extends SystemService
                             }
                         }
                     }
-                    if (!disabled && (mDeviceIdleMode || mLightDeviceIdleMode) ) {
+                    if (!disabled) {
+                    // if (!disabled && (mDeviceIdleMode || mLightDeviceIdleMode) ) {
                     //if (/*mDeviceIdleMode*/ !disabled /*&& mWakefulness != WAKEFULNESS_AWAKE */) {
                     // If we are in idle mode, we will also ignore all partial wake locks that are
                     // for application uids that are not whitelisted.
                         final UidState state = wakeLock.mUidState;
-                        if (Arrays.binarySearch(mDeviceIdleWhitelist, appid) < 0 ) {
+                        if (Arrays.binarySearch(mDeviceIdleWhitelist, appid) < 0 
+                            /*&& Arrays.binarySearch(mDeviceIdleTempWhitelist, appid) < 0*/ ) {
                             disabled = true;
                             if( DEBUG ) {
                                 if( wakeLock.mDisabled != disabled ) {

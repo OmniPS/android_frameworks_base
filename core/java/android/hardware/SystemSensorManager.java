@@ -125,12 +125,12 @@ public class SystemSensorManager extends SensorManager {
 
     public void suspend(boolean wakeup) {
         nativeSetOperationParameter(
-                mNativeInstance, -1, wakeup ? 1:0, new float[1], new int[1]) ;
+                mNativeInstance, -11, wakeup ? 1:0, new float[1], new int[1]) ;
     }
 
     public void resume() {
         nativeSetOperationParameter(
-                mNativeInstance, -2, 0, new float[1], new int[1]) ;
+                mNativeInstance, -12, 0, new float[1], new int[1]) ;
     }
 
     /** @hide */

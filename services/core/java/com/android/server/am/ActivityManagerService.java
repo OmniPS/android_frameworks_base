@@ -8815,7 +8815,13 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     boolean isWhiteListedIntent(String packageName, Intent intent) {
 
-        if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG,"Intent packageName=" + packageName + ", uri=" + intent.toUri(0));
+        if (DEBUG_BACKGROUND_CHECK)  {
+            try { 
+                Slog.d(TAG,"background_check: Intent packageName=" + packageName + ", uri=" + intent.toUri(0));
+            } catch(Exception e) {
+                Slog.d(TAG,"background_check: Intent packageName=" + packageName + ", intent=" + intent);
+            }
+        }
 
 	    String act = intent.getAction();
         String pkg = intent.getPackage();
@@ -8830,6 +8836,10 @@ public class ActivityManagerService extends IActivityManager.Stub
                 return isWhitelistedC2DIntent(packageName, intent);
             }
 
+
+            if( act.equals("android.media.action.OPEN_AUDIO_EFFECT_CONTROL_SESSION") || 
+                act.equals("android.media.action.CLOSE_AUDIO_EFFECT_CONTROL_SESSION") ) return true;
+                   
             if( pkg.equals("com.google.android.gms.persistent")  || 
                 pkg.equals("com.google.android.gms") ) {
 
@@ -8858,15 +8868,28 @@ public class ActivityManagerService extends IActivityManager.Stub
    		    //if( act.contains("com.google.android.location.internal.action.FLP_LOW_POWER_LOCATION_RESULT") ) return true;
    		    //if( act.contains("com.google.android.location.internal.GoogleLocationManagerService") ) return true;
         }
+
+	    ComponentName cmp = intent.getComponent();
+	    String cls=null;
+	    if( cmp != null ) {
+	        String cpkg = cmp.getPackageName();
+	        cls = cmp.getClassName();
+	        if( cpkg != null ) pkg = cpkg;
+ 	        if( cls != null ) {
+		        if( isWhiteListedService(pkg,cls) ) return true;
+	        }
+	    }
         return false;
     }
 
     boolean isWhiteListedService(String packageName,String cls) {
 
-        if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG,"Service packageName=" + packageName + ", cls=" + cls);
+        if (DEBUG_BACKGROUND_CHECK) Slog.d(TAG,"background_check: Service packageName=" + packageName + ", cls=" + cls);
 
 	    //if( packageName == null ) return true;
         if( cls != null ) {
+                if( cls.contains("wear") ) return true;
+                if( cls.contains("Wear") ) return true;
                 if( cls.startsWith("com.android.") ) return true;
 		        if( cls.contains("com.google.android.gms.auth") ) return true;
 		        if( cls.contains("com.google.android.gms.gcm") ) return true;

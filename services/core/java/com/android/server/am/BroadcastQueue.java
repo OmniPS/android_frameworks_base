@@ -614,41 +614,6 @@ public final class BroadcastQueue {
             skip = true;
         }
 
-
-
-            if (!skip) {
-                if (DEBUG_BROADCAST) Slog.v(TAG, "getAppStartModeLocked: from=" + r.callerPackage + " receiving intent=" + r.intent);
-                int allowed = ActivityManager.APP_START_MODE_NORMAL;
-                mService.updateScreenState(r.intent);
-                if( !mService.isWhiteListedIntent(filter.packageName,r.intent) ) {
-                    allowed = mService.getAppStartModeLocked(
-                        filter.receiverList.uid, filter.packageName,
-                        Build.VERSION_CODES.N, -1, true, false);
-                } else {
-                    if (DEBUG_BROADCAST) Slog.v(TAG, "Whitelisted: from=" + r.callerPackage + " receiving intent=" + r.intent);
-                }
-    
-                if (allowed != ActivityManager.APP_START_MODE_NORMAL) {
-                    // We won't allow this receiver to be launched if the app has been
-                    // completely disabled from launches, or it was not explicitly sent
-                    // to it and the app is in a state that should not receive it
-                    // (depending on how getAppStartModeLocked has determined that).
-                    if (allowed == ActivityManager.APP_START_MODE_DISABLED || allowed == ActivityManager.APP_START_MODE_DELAYED ) {
-                        Slog.w(TAG, "Background execution disabled: receiving " + r.intent);
-                        skip = true;
-                    } else if ( allowed == ActivityManager.APP_START_MODE_DELAYED_RIGID && ((r.intent.getFlags()&Intent.FLAG_RECEIVER_EXCLUDE_BACKGROUND) != 0)
-                            || (r.intent.getComponent() == null
-                                && r.intent.getPackage() == null
-                                && ((r.intent.getFlags()
-                                        & Intent.FLAG_RECEIVER_INCLUDE_BACKGROUND) == 0)
-                                && !isSignaturePerm(r.requiredPermissions))) {
-                        mService.addBackgroundCheckViolationLocked(r.intent.getAction(),filter.packageName);
-                        Slog.w(TAG, "Background execution not allowed: receiving "  + r.intent);
-                        skip = true;
-                    } 
-                }
-            }
-
         if (!mService.mIntentFirewall.checkBroadcast(r.intent, r.callingUid,
                 r.callingPid, r.resolvedType, filter.receiverList.uid)) {
             skip = true;
